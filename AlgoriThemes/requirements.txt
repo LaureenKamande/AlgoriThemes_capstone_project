@@ -17,4 +17,5 @@ nltk
 python-docx
 torch
 transformers>=4.40,<5
+modal
 

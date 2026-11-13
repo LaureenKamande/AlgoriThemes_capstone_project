@@ -14,9 +14,9 @@ from typing import Any
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from sentence_transformers import SentenceTransformer
 
 from topic_analysis import analyse_topics
+from gpu_client import use_modal
 from sentiment_analysis import analyse_sentiment
 from report_builder import compile_report, report_to_docx
 from html_export import build_interactive_html
@@ -175,6 +175,8 @@ def navigate(page):
     show_spinner="Loading the sentence embedding model..."
 )
 def get_embedding_model():
+    # Only load the local embedding model for the CPU route.
+    from sentence_transformers import SentenceTransformer
     return SentenceTransformer("all-MiniLM-L6-v2")
 
 
@@ -1100,7 +1102,8 @@ def show_analyse():
             with st.spinner(
                 "Running the analytical pipeline..."
             ):
-                embedding_model = get_embedding_model()
+                # Do not download/load a local transformer when Modal is enabled.
+                embedding_model = None if use_modal() else get_embedding_model()
 
                 if analysis_type == "topic":
                     results = analyse_topics(

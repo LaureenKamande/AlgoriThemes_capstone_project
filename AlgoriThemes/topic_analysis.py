@@ -1,15 +1,16 @@
 import copy
 import numpy as np
 import pandas as pd
-from bertopic import BERTopic
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from umap import UMAP
-from hdbscan import HDBSCAN
 def assign_outliers(model, docs, topics, embeddings, threshold=0.0):
     """Move every outlier (-1) to its closest topic, then refresh the keywords."""
     topics = np.array(topics).tolist()
     n_before = int(np.sum(np.array(topics) == -1))
+
+    # No reassignment is necessary when HDBSCAN found no outliers.
+    if n_before == 0:
+        return model, np.asarray(topics), 0, 0
 
     model = copy.deepcopy(model)          # keeps your original model untouched
 
@@ -47,6 +48,12 @@ def representative_answers(docs, labels, embeddings, n=3):
     return out
 
 def run_bertopic(docs, embedding_model, embeddings=None, seed=42, top_n_words=10):
+    # Load heavy modelling libraries only when using the CPU route.
+    # On Modal, these imports occur inside the remote GPU container.
+    from bertopic import BERTopic
+    from umap import UMAP
+    from hdbscan import HDBSCAN
+
     n = len(docs)
     if n < 30:
         raise ValueError(f"Only {n} answers. At least 30 are needed to find themes.")
@@ -226,8 +233,18 @@ def analyse_topics(model_df, response_column, survey_question, embedding_model,
     The original notebook modelling and sampling functions above are unchanged.
     """
     from gemini_analysis import generate_topic_names, generate_themes
+    from gpu_client import use_modal, run_bertopic_gpu
 
+    modal_enabled = use_modal()
+    backend_name = "modal" if modal_enabled else "cpu"
     checkpoint = dict(checkpoint or {})
+    if (
+        "bertopic" in checkpoint
+        and checkpoint["bertopic"].get("backend", "cpu") != backend_name
+    ):
+        # Never reuse a checkpoint from a different compute backend.
+        checkpoint = {}
+
     if "bertopic" in checkpoint:
         saved = checkpoint["bertopic"]
         model_df = saved["model_df"].copy()
@@ -236,6 +253,35 @@ def analyse_topics(model_df, response_column, survey_question, embedding_model,
         summary = saved["summary"]
         gemini_samples = saved["gemini_samples"]
         gemini_topic_data = saved["gemini_topic_data"]
+    elif modal_enabled:
+        model_df = model_df.copy().reset_index(drop=True)
+        docs = model_df["bert_text"].astype(str).tolist()
+        original_responses = model_df[response_column].astype(str).tolist()
+        gpu_result = run_bertopic_gpu(docs, original_responses)
+
+        topics = np.asarray(gpu_result["topic_assignments"], dtype=int)
+        if len(topics) != len(model_df):
+            raise ValueError("Modal returned an unexpected number of topic assignments")
+        model_df["topic"] = topics
+        topic_table = pd.DataFrame(gpu_result["topic_table"])
+        summary = gpu_result["model_summary"]
+        gemini_samples = pd.DataFrame(
+            gpu_result["gemini_samples"], columns=["topic_id", "response"]
+        )
+        gemini_topic_data = gpu_result["gemini_topic_data"]
+        final_model = None  # Avoid transferring the full BERTopic model to Streamlit.
+
+        checkpoint["bertopic"] = {
+            "backend": "modal",
+            "model_df": model_df.copy(),
+            "topic_table": topic_table,
+            "model": None,
+            "summary": summary,
+            "gemini_samples": gemini_samples,
+            "gemini_topic_data": gemini_topic_data,
+        }
+        if save_checkpoint is not None:
+            save_checkpoint(checkpoint)
     else:
         model_df = model_df.copy().reset_index(drop=True)
         docs = model_df["bert_text"].astype(str).tolist()
@@ -265,6 +311,7 @@ def analyse_topics(model_df, response_column, survey_question, embedding_model,
                 "sample_responses": samples
             })
         checkpoint["bertopic"] = {
+            "backend": "cpu",
             "model_df": model_df.copy(),
             "topic_table": topic_table,
             "model": final_model,

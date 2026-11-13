@@ -14,8 +14,6 @@ from functools import lru_cache
 
 import numpy as np
 import pandas as pd
-import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 SENTIMENT_ORDER = ["Positive", "Neutral", "Negative"]
 SENTIMENT_CONFIG = {
@@ -31,6 +29,9 @@ SENTIMENT_CONFIG = {
 @lru_cache(maxsize=1)
 def _load_classifier():
     """Load the transformer once per running Python process."""
+    import torch
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
     name = SENTIMENT_CONFIG["model_name"]
     tokenizer = AutoTokenizer.from_pretrained(name, use_fast=True)
     model = AutoModelForSequenceClassification.from_pretrained(name)
@@ -68,6 +69,8 @@ def predict_sentiment(texts):
     columns = ["sentiment", "confidence_score", "review_flag"]
     if not texts:
         return pd.DataFrame(columns=columns)
+
+    import torch
 
     tokenizer, model, device, labels = _load_classifier()
     max_tokens = int(SENTIMENT_CONFIG["max_tokens"])
@@ -178,7 +181,20 @@ def analyse_sentiment(clean_df, response_column, survey_question, embedding_mode
         raise ValueError("BERTopic returned duplicate response identifiers")
 
     # Classify exactly the BERTopic-eligible responses, using bert_text.
-    predictions = predict_sentiment(full["bert_text"].astype(str).tolist())
+    # Keep the original CPU classifier unchanged for USE_MODAL = false.
+    from gpu_client import use_modal, run_sentiment_gpu
+
+    texts = full["bert_text"].astype(str).tolist()
+    if use_modal():
+        predictions = pd.DataFrame(
+            run_sentiment_gpu(texts),
+            columns=["sentiment", "confidence_score", "review_flag"],
+        )
+    else:
+        predictions = predict_sentiment(texts)
+
+    if len(predictions) != len(full):
+        raise ValueError("Sentiment classifier returned an unexpected number of rows")
     full = pd.concat([full, predictions], axis=1)
     # Prevent a merge from creating suffixes if input has old result columns.
     full = full.drop(columns=["topic", "topic_name", "theme_name", "theme_id"], errors="ignore")
