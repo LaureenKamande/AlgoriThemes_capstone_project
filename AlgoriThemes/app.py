@@ -1396,6 +1396,147 @@ def percentage_sentiment_chart(distribution):
 
 
 # ============================================================
+# SENTIMENT PRESENTATION HELPERS
+# ============================================================
+
+SENTIMENT_COLORS = {
+    "Positive": "#4D9B78",
+    "Neutral": "#8794A3",
+    "Negative": "#C16B6B",
+}
+
+
+def wrap_topic_label(value, width=34):
+    """Wrap long Plotly category labels without changing actual topic names."""
+    import textwrap
+
+    pieces = textwrap.wrap(
+        str(value), width=width, break_long_words=False,
+        break_on_hyphens=False,
+    )
+    return "<br>".join(pieces) if pieces else str(value)
+
+
+def render_theme_sentiment(theme_rows, topic_counts, topic_id_col, section_key, theme_index):
+    """Show sentiment percentages at theme and constituent-topic levels.
+
+    Uses existing response-level RoBERTa labels; no model is rerun.
+    """
+    if "sentiment" not in theme_rows.columns or theme_rows["sentiment"].dropna().empty:
+        return
+
+    # Theme-level percentages use every classified response in THIS theme.
+    theme_total = len(theme_rows)
+    counts = theme_rows["sentiment"].value_counts().reindex(
+        SENTIMENT_ORDER, fill_value=0
+    )
+    theme_data = pd.DataFrame({
+        "sentiment": SENTIMENT_ORDER,
+        "Count": [int(counts[label]) for label in SENTIMENT_ORDER],
+    })
+    theme_data["Percentage"] = 100 * theme_data["Count"] / max(theme_total, 1)
+    theme_data["Group"] = "Theme"
+    theme_data["Bar label"] = theme_data["Percentage"].apply(
+        lambda value: f"{value:.1f}%" if value >= 8 else ""
+    )
+
+    st.markdown("**Sentiment distribution within this theme**")
+    theme_fig = px.bar(
+        theme_data,
+        x="Percentage", y="Group", color="sentiment", orientation="h",
+        barmode="stack", text="Bar label", custom_data=["Count"],
+        color_discrete_map=SENTIMENT_COLORS,
+        category_orders={"sentiment": SENTIMENT_ORDER},
+        labels={"Percentage": "Within theme (%)", "sentiment": "Sentiment"},
+    )
+    theme_fig.update_traces(
+        textposition="inside",
+        hovertemplate=(
+            "%{fullData.name}: %{x:.1f}% of this theme"
+            "<br>n=%{customdata[0]}<extra></extra>"
+        ),
+    )
+    theme_fig.update_layout(
+        height=165,
+        xaxis=dict(range=[0, 100], ticksuffix="%", title=None),
+        yaxis=dict(visible=False),
+        legend=dict(orientation="h", yanchor="bottom", y=1.14, x=0),
+        margin=dict(l=8, r=12, t=45, b=15),
+    )
+    st.plotly_chart(
+        theme_fig, use_container_width=True,
+        key=f"{section_key}_theme_sentiment_{theme_index}",
+    )
+    st.caption(
+        " · ".join(
+            f"{label}: {int(counts[label]):,} "
+            f"({100 * counts[label] / max(theme_total, 1):.1f}%)"
+            for label in SENTIMENT_ORDER
+        )
+    )
+
+    # Topic-level percentages use the number of responses in EACH topic.
+    topic_sentiment = (
+        theme_rows.groupby([topic_id_col, "topic_name", "sentiment"], dropna=False)
+        .size().reset_index(name="Count")
+    )
+    if topic_sentiment.empty:
+        return
+
+    totals = theme_rows.groupby(topic_id_col).size()
+    topic_sentiment["Topic Total"] = topic_sentiment[topic_id_col].map(totals)
+    topic_sentiment["Within Topic (%)"] = (
+        100 * topic_sentiment["Count"] / topic_sentiment["Topic Total"]
+    )
+
+    # Use a unique category per topic ID, even if Gemini gives two topics the same name.
+    display_labels = {
+        row[topic_id_col]: (
+            f"{row['topic_name']} (topic {row[topic_id_col]})"
+            if topic_counts["topic_name"].eq(row["topic_name"]).sum() > 1
+            else str(row["topic_name"])
+        )
+        for _, row in topic_counts.iterrows()
+    }
+    topic_sentiment["Topic label"] = topic_sentiment[topic_id_col].map(display_labels)
+    ordered_ids = topic_counts.sort_values("Count", ascending=True)[topic_id_col].tolist()
+    ordered_labels = [display_labels[topic_id] for topic_id in ordered_ids]
+
+    st.markdown("**Sentiment within topics in this theme**")
+    topic_fig = px.bar(
+        topic_sentiment,
+        x="Within Topic (%)", y="Topic label", color="sentiment",
+        orientation="h", barmode="stack", custom_data=["Count", "Topic Total"],
+        color_discrete_map=SENTIMENT_COLORS,
+        category_orders={"sentiment": SENTIMENT_ORDER},
+        labels={"Within Topic (%)": "Within topic (%)", "sentiment": "Sentiment"},
+    )
+    topic_fig.update_traces(
+        hovertemplate=(
+            "%{y}<br>%{fullData.name}: %{x:.1f}% of topic"
+            "<br>n=%{customdata[0]} of %{customdata[1]}<extra></extra>"
+        )
+    )
+    topic_fig.update_yaxes(
+        categoryorder="array", categoryarray=ordered_labels,
+        tickmode="array", tickvals=ordered_labels,
+        ticktext=[wrap_topic_label(label) for label in ordered_labels],
+        automargin=True, title=None, tickfont=dict(size=11),
+    )
+    topic_fig.update_layout(
+        height=max(300, 68 * len(ordered_labels) + 125),
+        xaxis=dict(range=[0, 100], ticksuffix="%", title="Within topic (%)"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        margin=dict(l=300, r=25, t=55, b=45),
+    )
+    st.plotly_chart(
+        topic_fig, use_container_width=True,
+        key=f"{section_key}_topic_sentiment_{theme_index}",
+    )
+    st.caption("Each topic bar totals 100% of responses assigned to that topic.")
+
+
+# ============================================================
 # RESULTS — THEME DETAIL HELPERS
 # ============================================================
 
@@ -1565,17 +1706,22 @@ def render_theme_details(
             cliponaxis=False,
         )
 
+        fig.update_yaxes(
+            tickmode="array",
+            tickvals=topic_counts["topic_name"].tolist(),
+            ticktext=[wrap_topic_label(name) for name in topic_counts["topic_name"]],
+            automargin=True,
+            title=None,
+            tickfont=dict(size=11),
+        )
         fig.update_layout(
             xaxis=dict(
                 range=[0, 105],
                 ticksuffix="%",
             ),
             yaxis_title=None,
-            margin=dict(l=10, r=55, t=40, b=30),
-            height=max(
-                250,
-                len(topic_counts) * 55 + 110,
-            ),
+            margin=dict(l=300, r=55, t=40, b=35),
+            height=max(300, len(topic_counts) * 68 + 110),
             showlegend=False,
         )
 
@@ -1583,6 +1729,16 @@ def render_theme_details(
             fig,
             use_container_width=True,
             key=f"{section_key}_theme_chart_{theme_index}",
+        )
+
+        # The sentiment route also shows Positive / Neutral / Negative
+        # composition for this theme and for each topic within it.
+        render_theme_sentiment(
+            theme_rows=theme_rows,
+            topic_counts=topic_counts,
+            topic_id_col=topic_id_col,
+            section_key=section_key,
+            theme_index=theme_index,
         )
 
         st.markdown("**Topics and descriptions**")
@@ -1655,6 +1811,13 @@ def render_theme_details(
                             0,
                             st.session_state.id_column,
                         )
+
+                    # Include existing sentiment predictions when present.
+                    for sentiment_column in (
+                        "sentiment", "confidence_score", "review_flag"
+                    ):
+                        if sentiment_column in examples.columns:
+                            display_columns.append(sentiment_column)
 
                     st.dataframe(
                         examples[display_columns],
@@ -1855,19 +2018,59 @@ def display_theme_section(results, analysis_type):
                    "Responses unassigned by BERTopic are excluded from topic-level comparisons.")
         dist = results.get("sentiment_by_topic", pd.DataFrame())
         if not dist.empty:
-            fig = px.bar(
-                dist, x="topic_name", y="Within Topic (%)", color="sentiment",
-                color_discrete_map={"Positive":"#4D9B78", "Neutral":"#8794A3",
-                                    "Negative":"#C16B6B"},
-                category_orders={"sentiment": SENTIMENT_ORDER},
-                barmode="stack", hover_data=["Count", "Topic Total"],
-                title="Sentiment composition of identified topics (%)",
+            # Horizontal 100%-stacked bars keep long topic names readable.
+            chart_data = dist.copy()
+            names_per_id = (
+                chart_data[["topic", "topic_name"]].drop_duplicates()
+                if "topic" in chart_data.columns else pd.DataFrame()
             )
-            fig.update_layout(yaxis_range=[0, 100], xaxis_title=None,
-                              yaxis_title="Within topic (%)", height=480,
-                              xaxis_tickangle=-35)
-            st.plotly_chart(fig, use_container_width=True,
-                            key="sentiment_by_topic_chart")
+            if not names_per_id.empty:
+                duplicate_names = names_per_id["topic_name"].duplicated(keep=False)
+                duplicate_ids = set(names_per_id.loc[duplicate_names, "topic"])
+                chart_data["Topic label"] = chart_data.apply(
+                    lambda row: (
+                        f"{row['topic_name']} (topic {row['topic']})"
+                        if row["topic"] in duplicate_ids else str(row["topic_name"])
+                    ), axis=1,
+                )
+            else:
+                chart_data["Topic label"] = chart_data["topic_name"].astype(str)
+
+            topic_order = (
+                chart_data.groupby("Topic label")["Topic Total"]
+                .max().sort_values(ascending=True).index.tolist()
+            )
+            fig = px.bar(
+                chart_data,
+                x="Within Topic (%)", y="Topic label", color="sentiment",
+                orientation="h", barmode="stack",
+                color_discrete_map=SENTIMENT_COLORS,
+                category_orders={"sentiment": SENTIMENT_ORDER},
+                custom_data=["Count", "Topic Total"],
+                title="Sentiment composition of identified topics (%)",
+                labels={"Within Topic (%)": "Within topic (%)", "sentiment": "Sentiment"},
+            )
+            fig.update_traces(
+                hovertemplate=(
+                    "%{y}<br>%{fullData.name}: %{x:.1f}% of topic"
+                    "<br>n=%{customdata[0]} of %{customdata[1]}<extra></extra>"
+                )
+            )
+            fig.update_yaxes(
+                categoryorder="array", categoryarray=topic_order,
+                tickmode="array", tickvals=topic_order,
+                ticktext=[wrap_topic_label(label) for label in topic_order],
+                automargin=True, title=None, tickfont=dict(size=11),
+            )
+            fig.update_layout(
+                height=max(540, 66 * len(topic_order) + 140),
+                xaxis=dict(range=[0, 100], ticksuffix="%", title="Within topic (%)"),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+                margin=dict(l=310, r=35, t=75, b=50),
+            )
+            st.plotly_chart(
+                fig, use_container_width=True, key="sentiment_by_topic_chart"
+            )
             columns = (["theme_name"] if results.get("themes_generated", True) else []) + [
                 "topic_name", "sentiment", "Count", "Topic Total", "Within Topic (%)"]
             st.dataframe(
