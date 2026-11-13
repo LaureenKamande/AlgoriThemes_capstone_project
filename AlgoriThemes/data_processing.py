@@ -7,10 +7,28 @@ from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
 
-try:
-    nltk.data.find("corpora/stopwords")
-except LookupError:
-    nltk.download("stopwords", quiet=True, raise_on_error=True)
+# NLTK corpora are separate downloads from the nltk Python package.
+# Check once when this module is imported, including on Streamlit Cloud.
+def ensure_nltk_resources():
+    resources = {
+        "stopwords": ("corpora/stopwords",),
+        "punkt_tab": ("tokenizers/punkt_tab/english/",),
+        # NLTK commonly keeps WordNet in its downloaded ZIP archive.
+        "wordnet": ("corpora/wordnet", "corpora/wordnet.zip"),
+    }
+
+    for package, possible_paths in resources.items():
+        for path in possible_paths:
+            try:
+                nltk.data.find(path)
+                break
+            except LookupError:
+                continue
+        else:
+            nltk.download(package, quiet=True, raise_on_error=True)
+
+
+ensure_nltk_resources()
 
 
 # ============================================================
