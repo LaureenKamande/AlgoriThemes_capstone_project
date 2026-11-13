@@ -450,38 +450,77 @@ TOPIC DATA INCLUDING ACTUAL RESPONSES:
 {json.dumps(theme_input, ensure_ascii=False)}
 """
 
-    result = ask_gemini(prompt)
+    # Gemini can occasionally omit or repeat a topic ID. Preserve the
+    # one-topic-to-one-theme rule and request one corrected response instead
+    # of silently changing the analysis or discarding topics.
+    expected = {int(t["topic_id"]) for t in theme_input}
+    if len(expected) != len(theme_input):
+        raise ValueError("Theme input contains duplicate topic IDs.")
 
-    records = []
+    for attempt in range(2):
+        result = ask_gemini(prompt)
+        records = []
 
-    for theme in result["themes"]:
-        for topic_id in theme["topic_ids"]:
-            records.append({
-                "topic_id": int(topic_id),
-                "theme_name": theme["theme_name"],
-                "theme_description": theme["description"]
-            })
+        try:
+            themes = result["themes"]
+            if not isinstance(themes, list):
+                raise TypeError("'themes' must be a list")
+            for theme in themes:
+                if not isinstance(theme["topic_ids"], list):
+                    raise TypeError("'topic_ids' must be a list")
+                for topic_id in theme["topic_ids"]:
+                    records.append({
+                        "topic_id": int(topic_id),
+                        "theme_name": theme["theme_name"],
+                        "theme_description": theme["description"],
+                    })
+        except (KeyError, TypeError, ValueError) as exc:
+            if attempt == 1:
+                raise ValueError(
+                    "Gemini returned an invalid theme response after one correction attempt."
+                ) from exc
+            prompt += (
+                "\nCORRECTION REQUIRED: Your previous response had an invalid "
+                "JSON structure for theme assignments. Return the complete "
+                "themes JSON with a list of theme objects, each containing "
+                "theme_name, description, and a list of integer topic_ids. "
+                f"Use exactly these original topic IDs once each: {sorted(expected)}."
+            )
+            continue
 
-    mapping = pd.DataFrame(records)
-
-    expected = {t["topic_id"] for t in theme_input}
-    received = mapping["topic_id"]
-
-    if (
-        len(mapping) != len(expected)
-        or received.duplicated().any()
-        or set(received) != expected
-    ):
-        raise ValueError(
-            "Each topic must appear in exactly one theme."
+        mapping = pd.DataFrame(
+            records, columns=["topic_id", "theme_name", "theme_description"]
         )
+        received = mapping["topic_id"].tolist()
+        missing = sorted(expected - set(received))
+        unexpected = sorted(set(received) - expected)
+        duplicates = sorted({topic_id for topic_id in received
+                             if received.count(topic_id) > 1})
 
-    if mapping["theme_name"].isna().any() or (
-        mapping["theme_name"].astype(str).str.strip() == ""
-    ).any():
-        raise ValueError("Gemini returned an empty theme name.")
+        if not missing and not unexpected and not duplicates:
+            if mapping["theme_name"].isna().any() or (
+                mapping["theme_name"].astype(str).str.strip() == ""
+            ).any():
+                raise ValueError("Gemini returned an empty theme name.")
+            return mapping
 
-    return mapping
+        if attempt == 1:
+            raise ValueError(
+                "Gemini could not assign each topic to exactly one theme "
+                "after one correction attempt. "
+                f"Missing topic IDs: {missing}; repeated IDs: {duplicates}; "
+                f"unexpected IDs: {unexpected}."
+            )
+
+        prompt += (
+            "\nCORRECTION REQUIRED: Your previous theme assignment was invalid. "
+            f"The complete list of original topic IDs is {sorted(expected)}. "
+            f"You omitted {missing}, repeated {duplicates}, and introduced "
+            f"unexpected IDs {unexpected}. Return the COMPLETE themes JSON "
+            "again, using every original topic ID exactly once. "
+            "Keep the grouping evidence-based, preserve the topic IDs, "
+            "and do not invent or remove topics."
+        )
 
 def generate_sentiment_topic_names(
     topic_data,
