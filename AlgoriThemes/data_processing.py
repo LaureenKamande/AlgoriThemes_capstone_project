@@ -1,10 +1,16 @@
 
 import re
 import pandas as pd
-
+import nltk
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
+
+
+try:
+    nltk.data.find("corpora/stopwords")
+except LookupError:
+    nltk.download("stopwords", quiet=True, raise_on_error=True)
 
 
 # ============================================================
