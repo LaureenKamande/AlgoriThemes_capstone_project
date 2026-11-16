@@ -70,11 +70,8 @@ st.markdown(
 
 PAGES = [
     "Home",
-    "Upload Data",
-    "Configure",
-    "Analyse",
+    "Upload & Configure",
     "Results",
-    "Export",
     "About",
 ]
 
@@ -121,9 +118,11 @@ def initialize_state():
         "topic_checkpoint": None,
         "topic_checkpoint_id": None,
         "page": "Home",
+        "upload_signature": None,
         "analysis_route_selector": "topic",
         "demo_loaded": False,
         "demo_error": None,
+        "pending_demo_analysis": None,
     }
 
     for key, value in defaults.items():
@@ -166,8 +165,13 @@ def clear_preparation():
     clear_analysis()
 
 
-def navigate(page):
+def set_page(page):
+    """Set the active page without modifying a rendered Streamlit widget."""
     st.session_state.page = page
+
+
+def navigate(page):
+    set_page(page)
     st.rerun()
 
 
@@ -390,17 +394,29 @@ def select_demo_route(route):
         settings = get_demo_settings(route)
         raw, question = get_demo_dataset(route)
         response_column = settings["response_column"]
+        # A small, reproducible demonstration sample. Keep the full dataset
+        # unchanged on disk for research and larger-scale evaluation.
+        eligible_demo = raw[response_column].notna() & raw[response_column].astype(str).str.strip().ne("")
+        demo_pool = raw.loc[eligible_demo]
+        raw = demo_pool.sample(n=min(100, len(demo_pool)), random_state=42).reset_index(drop=True)
         id_column = settings.get("id_column")
         duplicate_policy = settings.get("duplicate_policy", "Keep all responses")
         working, model_df, short_df, summary = build_prepared_data(
             raw, response_column, id_column, duplicate_policy
         )
+        if len(model_df) < 30:
+            raise ValueError(
+                f"Only {len(model_df)} eligible responses are available; "
+                "the demo needs at least 30."
+            )
     except (OSError, ValueError, KeyError, ImportError) as exc:
         st.session_state.demo_error = f"Unable to load demo: {exc}"
         st.session_state.page = "Home"
         return
 
     clear_preparation()
+    # Clear a previously uploaded file so it cannot replace the demo on rerun.
+    st.session_state.pop("dataset_upload", None)
     st.session_state.update({
         "raw_df": raw,
         "dataset_name": settings["dataset_name"],
@@ -414,17 +430,29 @@ def select_demo_route(route):
         "short_df": short_df,
         "prep_summary": summary,
         "analysis_route_selector": route,
-        "page": "Analyse",
+        "page": "Results",
+        "upload_signature": None,
         "demo_loaded": True,
         "demo_error": None,
+        # The next Streamlit run starts analysis automatically. No extra click.
+        "pending_demo_analysis": route,
     })
 
 
 def select_own_data_route(route):
+    st.session_state.pending_demo_analysis = None
     st.session_state.analysis_route_selector = route
+    if st.session_state.demo_loaded:
+        # An own-data route should not silently reuse the sample dataset.
+        clear_preparation()
+        st.session_state.raw_df = None
+        st.session_state.dataset_name = None
+        st.session_state.sheet_name = None
+        st.session_state.survey_question = ""
+        st.session_state.upload_signature = None
     st.session_state.demo_loaded = False
     st.session_state.demo_error = None
-    st.session_state.page = "Upload Data"
+    set_page("Upload & Configure")
 
 
 # ============================================================
@@ -501,7 +529,7 @@ def show_home():
     # DEMO INFORMATION
     # ==========================================
     st.caption(
-        "Demos run the analysis on real research datasets. "
+        "Demos use up to 100 sampled responses from real research datasets. "
         "No results are precomputed."
     )
 
@@ -701,113 +729,68 @@ def show_about():
 
 
 # ============================================================
-# UPLOAD
+# UPLOAD + CONFIGURE — ONE STEP
 # ============================================================
 
-def show_upload():
-    st.title("Upload Data")
+def show_upload_and_configure():
+    st.title("Upload & Configure")
+    st.caption("Upload your survey data, choose the response column and click Analyse. ")
 
+    route = st.session_state.analysis_route_selector
+    route_label = "Topic analysis" if route == "topic" else "Topic + sentiment analysis"
+    st.info(f"Selected on Home: **{route_label}**. To change the analysis route, return to Home.")
+
+    st.subheader("1. Upload data")
     upload = st.file_uploader(
         "Choose a CSV or Excel dataset",
         type=["csv", "xlsx", "xls"],
         key="dataset_upload",
     )
 
-    if upload is None:
-        if st.session_state.raw_df is not None:
-            st.info(
-                f"Current dataset: "
-                f"{st.session_state.dataset_name}"
-            )
+    if upload is not None:
+        contents = upload.getvalue()
+        filename = upload.name
+        sheet = 0
+        if filename.lower().endswith((".xlsx", ".xls")):
+            try:
+                sheets = pd.ExcelFile(io.BytesIO(contents)).sheet_names
+                sheet = st.selectbox("Excel worksheet", sheets, key="selected_sheet")
+            except Exception as exc:
+                st.error(f"Could not read Excel worksheets: {exc}")
+                return
 
-            st.dataframe(
-                st.session_state.raw_df.head(10),
-                use_container_width=True,
-            )
-
-        return
-
-    contents = upload.getvalue()
-    filename = upload.name
-    sheet = 0
-
-    if filename.lower().endswith((".xlsx", ".xls")):
-        try:
-            sheets = pd.ExcelFile(
-                io.BytesIO(contents)
-            ).sheet_names
-
-            sheet = st.selectbox(
-                "Excel worksheet",
-                sheets,
-                key="selected_sheet",
-            )
-
-        except Exception as exc:
-            st.error(
-                f"Could not read Excel worksheets: {exc}"
-            )
-            return
-
-    try:
-        preview = read_uploaded_file(
-            contents,
-            filename,
-            sheet,
-        )
-
-    except Exception as exc:
-        st.error(f"Could not read dataset: {exc}")
-        return
-
-    show_metrics([
-        ("Rows", f"{len(preview):,}"),
-        ("Columns", len(preview.columns)),
-    ])
-
-    st.dataframe(
-        preview.head(15),
-        use_container_width=True,
-    )
-
-    if st.button("Use this dataset", type="primary"):
-        changed = (
-            st.session_state.dataset_name != filename
-            or st.session_state.sheet_name != sheet
-            or st.session_state.raw_df is None
-            or not st.session_state.raw_df.equals(preview)
-        )
-
-        if changed:
+        signature = hashlib.sha256(contents + filename.encode("utf-8") + str(sheet).encode("utf-8")).hexdigest()
+        if signature != st.session_state.upload_signature:
+            try:
+                preview = read_uploaded_file(contents, filename, sheet)
+            except Exception as exc:
+                st.error(f"Could not read dataset: {exc}")
+                return
             clear_preparation()
-
-        st.session_state.raw_df = preview.copy()
-        st.session_state.dataset_name = filename
-        st.session_state.sheet_name = sheet
-        st.session_state.demo_loaded = False
-
-        navigate("Configure")
-
-
-# ============================================================
-# CONFIGURE
-# ============================================================
-
-def show_configure():
-    st.title("Configure Analysis")
+            st.session_state.update({
+                "raw_df": preview.copy(),
+                "dataset_name": filename,
+                "sheet_name": sheet,
+                "survey_question": "",
+                "demo_loaded": False,
+                "upload_signature": signature,
+            })
 
     raw = st.session_state.raw_df
-
     if raw is None:
-        st.warning("Upload a dataset first.")
-
-        st.button(
-            "Go to Upload Data",
-            on_click=navigate,
-            args=("Upload Data",),
-        )
+        st.info("Upload a dataset above, or choose a sample dataset from Home.")
         return
 
+    if st.session_state.demo_loaded:
+        st.success(f"Demo dataset loaded: {st.session_state.dataset_name} (up to 100 responses).")
+    else:
+        st.success(f"Dataset loaded: {st.session_state.dataset_name}")
+
+    show_metrics([("Rows", f"{len(raw):,}"), ("Columns", len(raw.columns))])
+    with st.expander("Preview uploaded data"):
+        st.dataframe(raw.head(15), use_container_width=True)
+
+    st.subheader("2. Configure analysis")
     columns = list(raw.columns)
     suggested = likely_open_ended_columns(raw)
     other_label = "Other column (choose manually)..."
@@ -819,366 +802,158 @@ def show_configure():
         else suggested[0] if suggested else other_label
     )
 
-    st.caption(
-        "Showing likely open-ended response columns based on their content. "
-        "If yours is missing, choose 'Other column'."
-    )
+    st.caption("Likely open-ended response columns are suggested automatically; you can select any column.")
     response_choice = st.selectbox(
-        "Open-ended response column",
-        response_options,
+        "Open-ended response column", response_options,
         index=response_options.index(initial_choice),
     )
     if response_choice == other_label:
-        other_columns = [c for c in columns if c not in suggested]
-        if not other_columns:
-            other_columns = columns
+        other_columns = [c for c in columns if c not in suggested] or columns
         response_column = st.selectbox(
-            "Select another column",
-            other_columns,
+            "Select another column", other_columns,
             index=(other_columns.index(current_response)
                    if current_response in other_columns else 0),
         )
     else:
         response_column = response_choice
 
-    with st.form("prepare_form"):
-        id_options = [
-            "(None)"
-        ] + [
-            c for c in columns
-            if c != response_column
-        ]
-
+    with st.form("analyse_form"):
+        id_options = ["(None)"] + [c for c in columns if c != response_column]
         selected_id = st.session_state.id_column
-
-        id_index = (
-            id_options.index(selected_id)
-            if selected_id in id_options
-            else 0
-        )
-
         id_selection = st.selectbox(
-            "Respondent identifier (optional)",
-            id_options,
-            index=id_index,
+            "Respondent identifier (optional)", id_options,
+            index=(id_options.index(selected_id) if selected_id in id_options else 0),
         )
+        id_column = None if id_selection == "(None)" else id_selection
 
-        id_column = (
-            None
-            if id_selection == "(None)"
-            else id_selection
-        )
-
-        policies = [
-            "Keep all responses",
-            "Remove duplicate response text",
-        ]
-
-        if id_column:
-            policies.append(
-                "Keep first response per respondent ID"
+        with st.expander("Advanced options — duplicate handling"):
+            policies = [
+                "Keep all responses",
+                "Remove duplicate response text",
+                "Keep first response per respondent ID",
+            ]
+            default_policy = st.session_state.duplicate_policy
+            duplicate_policy = st.selectbox(
+                "Duplicate handling", policies,
+                index=policies.index(default_policy) if default_policy in policies else 0,
             )
-
-        default_policy = st.session_state.duplicate_policy
-
-        duplicate_policy = st.selectbox(
-            "Duplicate handling",
-            policies,
-            index=(
-                policies.index(default_policy)
-                if default_policy in policies
-                else 0
-            ),
-        )
 
         survey_question = st.text_area(
             "Original open-ended survey question",
             value=st.session_state.survey_question,
-            placeholder=(
-                "Paste the question respondents "
-                "were answering..."
-            ),
-            height=110,
+            placeholder="Paste the question respondents were answering...",
+            height=100,
         )
+        st.caption("Responses with fewer than three cleaned words are excluded from analysis.")
+        submitted = st.form_submit_button("Analyse", type="primary", use_container_width=True)
 
-        submitted = st.form_submit_button(
-            "Prepare responses",
-            type="primary",
-        )
+    if not submitted:
+        return
+    if not survey_question.strip():
+        st.error("Enter the original survey question before analysing.")
+        return
+    if duplicate_policy == "Keep first response per respondent ID" and not id_column:
+        st.error("Select a respondent identifier, or choose a different duplicate-handling option.")
+        return
 
-    if submitted:
-        if not survey_question.strip():
-            st.error(
-                "Enter the original survey question."
+    try:
+        with st.spinner("Preparing survey responses..."):
+            working, model_df, short_df, summary = build_prepared_data(
+                raw, response_column, id_column, duplicate_policy,
             )
-            return
+    except Exception as exc:
+        st.error(f"Preparation failed: {exc}")
+        return
 
-        try:
-            with st.spinner("Preparing responses..."):
-                (
-                    working,
-                    model_df,
-                    short_df,
-                    summary,
-                ) = build_prepared_data(
-                    raw,
-                    response_column,
-                    id_column,
-                    duplicate_policy,
-                )
-
-        except Exception as exc:
-            st.error(f"Preparation failed: {exc}")
-            return
-
-        clear_analysis()
-
-        st.session_state.update({
-            "working_df": working,
-            "model_df": model_df,
-            "short_df": short_df,
-            "prep_summary": summary,
-            "response_column": response_column,
-            "id_column": id_column,
-            "duplicate_policy": duplicate_policy,
-            "survey_question": survey_question.strip(),
-        })
-
-        st.success("Responses prepared successfully.")
-
-    summary = st.session_state.prep_summary
-
-    if summary:
-        metric_items = [
-            ("Uploaded", f"{summary.get('uploaded_rows', len(st.session_state.raw_df)):,}"),
-            ("Retained", f"{summary.get('retained_responses', len(st.session_state.working_df) if st.session_state.working_df is not None else 0):,}"),
-            ("Short responses dropped", f"{summary.get('short_responses', 0):,}"),
-            ("Null values dropped", f"{summary.get('null_removed', summary.get('blank_removed', 0)):,}"),
-            ("Duplicate respondents dropped",
-             f"{summary.get('duplicate_respondents_removed', 0):,}"),
-        ]
-        if summary.get("duplicate_text_removed", 0):
-            metric_items.append(
-                ("Duplicate response texts dropped",
-                 f"{summary['duplicate_text_removed']:,}")
-            )
-        show_metrics(metric_items)
-
-        st.caption(
-            "Null values includes empty responses. Responses with fewer "
-            "than 3 cleaned words are excluded from both analysis options. "
-            "Duplicate respondents are removed only if that option is selected."
-        )
-
-        with st.expander("Preview prepared data"):
-            st.dataframe(
-                st.session_state.working_df.head(20),
-                use_container_width=True,
-            )
-
-        st.button(
-            "Continue to Analyse",
-            type="primary",
-            on_click=navigate,
-            args=("Analyse",),
-        )
-
-
-# ============================================================
-# RUN ANALYSIS — ORIGINAL ANALYTICAL FUNCTIONS
-# ============================================================
-
-def show_analyse():
-    st.title("Run Analysis")
-
-    if st.session_state.working_df is None:
+    if len(model_df) < 30:
         st.warning(
-            "Prepare a dataset before running an analysis."
-        )
-
-        st.button(
-            "Go to Configure",
-            on_click=navigate,
-            args=("Configure",),
+            f"Only {len(model_df)} eligible responses remain after preparation. "
+            "Topic discovery requires at least 30. Try another dataset or adjust duplicate handling."
         )
         return
 
-    analysis_type = st.radio(
-        "Choose analysis route",
-        ["topic", "sentiment"],
-        key="analysis_route_selector",
-        format_func=lambda x: (
-            "Explore topics" if x == "topic"
-            else "Explore topics and sentiment"
-        ),
-    )
+    clear_analysis()
+    st.session_state.update({
+        "working_df": working,
+        "model_df": model_df,
+        "short_df": short_df,
+        "prep_summary": summary,
+        "response_column": response_column,
+        "id_column": id_column,
+        "duplicate_policy": duplicate_policy,
+        "survey_question": survey_question.strip(),
+    })
+    # No intermediate Analyse page: run the same pipeline and go to Results.
+    if execute_analysis(route):
+        navigate("Results")
 
-    summary = st.session_state.prep_summary
-    if st.session_state.get("demo_loaded"):
-        st.info(
-            f"Real-data demo: {st.session_state.dataset_name}. "
-            "Select Run analysis to generate results; "
-            "no results have been precomputed."
-        )
 
-    if analysis_type == "topic":
-        st.write(
-            f"Topic discovery will analyse "
-            f"**{summary['topic_eligible_responses']:,}** "
-            f"eligible responses."
-        )
+# ============================================================
+# ANALYSIS EXECUTION — ORIGINAL MODEL PIPELINE
+# ============================================================
 
-        if len(st.session_state.model_df) < 30:
-            st.warning(
-                "Topic discovery requires "
-                "at least 30 eligible responses."
-            )
-
-    else:
-        st.write(
-            f"Topics will be discovered from "
-            f"**{summary['retained_responses']:,}** retained responses, "
-            f"then sentiment will be assessed for those same responses. "
-            f"**{summary['short_responses']:,}** short responses were dropped "
-            f"during preparation."
-        )
-        if len(st.session_state.model_df) < 30:
-            st.warning("Topic discovery needs at least 30 eligible responses.")
-        st.caption(
-            "Use sentiment analysis for questions about opinions, attitudes or "
-            "experiences. For factual answers or improvement suggestions, "
-            "topic modelling alone may be more meaningful."
-        )
-
-    st.caption(
-        "Selected example responses may be sent to an external AI service "
-        "to describe topics and group them into broader themes."
-    )
-
-    if st.session_state.analysis_results is not None:
-        st.info(
-            "An earlier analysis is stored in this session. "
-            "Running again will replace it."
-        )
-
-    disabled = len(st.session_state.model_df) < 30
-
+def execute_analysis(analysis_type):
+    """Run existing BERTopic/RoBERTa/Gemini workflows; return True on success."""
     # A checkpoint is valid only for the exact prepared inputs and question.
-    checkpoint_id = None
-    if analysis_type in ("topic", "sentiment"):
-        prepared = st.session_state.model_df
-        fingerprint = hashlib.sha256()
-        fingerprint.update(pd.util.hash_pandas_object(
-            prepared, index=True
-        ).values.tobytes())
-        fingerprint.update(str(tuple(prepared.columns)).encode("utf-8"))
-        fingerprint.update(st.session_state.response_column.encode("utf-8"))
-        fingerprint.update(st.session_state.survey_question.encode("utf-8"))
-        checkpoint_id = fingerprint.hexdigest()
-        if st.session_state.topic_checkpoint_id != checkpoint_id:
-            st.session_state.topic_checkpoint = None
-            st.session_state.topic_checkpoint_id = checkpoint_id
+    prepared = st.session_state.model_df
+    fingerprint = hashlib.sha256()
+    fingerprint.update(pd.util.hash_pandas_object(
+        prepared, index=True
+    ).values.tobytes())
+    fingerprint.update(str(tuple(prepared.columns)).encode("utf-8"))
+    fingerprint.update(st.session_state.response_column.encode("utf-8"))
+    fingerprint.update(st.session_state.survey_question.encode("utf-8"))
+    checkpoint_id = fingerprint.hexdigest()
+    if st.session_state.topic_checkpoint_id != checkpoint_id:
+        st.session_state.topic_checkpoint = None
+        st.session_state.topic_checkpoint_id = checkpoint_id
 
-    saved_steps = st.session_state.topic_checkpoint or {}
-    if saved_steps:
-        completed = [
-            label for key, label in (
-                ("bertopic", "BERTopic"),
-                ("topic_names", "topic naming"),
-                ("theme_groups", "theme grouping"),
-            ) if key in saved_steps
-        ]
-        st.info("Saved in this session: " + ", ".join(completed)
-                + ". Running again will resume from the next step.")
+    try:
+        with st.spinner("Running the analytical pipeline..."):
+            # Do not load a local transformer when Modal is enabled.
+            embedding_model = None if use_modal() else get_embedding_model()
+            if analysis_type == "topic":
+                results = analyse_topics(
+                    model_df=st.session_state.model_df,
+                    response_column=st.session_state.response_column,
+                    survey_question=st.session_state.survey_question,
+                    embedding_model=embedding_model,
+                    checkpoint=st.session_state.topic_checkpoint,
+                    save_checkpoint=lambda value: st.session_state.update(topic_checkpoint=value),
+                )
+            else:
+                results = analyse_sentiment(
+                    clean_df=st.session_state.working_df,
+                    model_df=st.session_state.model_df,
+                    response_column=st.session_state.response_column,
+                    survey_question=st.session_state.survey_question,
+                    embedding_model=embedding_model,
+                    checkpoint=st.session_state.topic_checkpoint,
+                    save_checkpoint=lambda value: st.session_state.update(topic_checkpoint=value),
+                )
 
-    if st.button(
-        "Run analysis",
-        type="primary",
-        disabled=disabled,
-    ):
-        clear_analysis()
+        st.session_state.analysis_type = analysis_type
+        st.session_state.analysis_results = results
 
+        # Recommendation generation is optional; its failure must not
+        # discard successfully completed topic/sentiment results.
         try:
-            with st.spinner(
-                "Running the analytical pipeline..."
-            ):
-                # Do not download/load a local transformer when Modal is enabled.
-                embedding_model = None if use_modal() else get_embedding_model()
-
-                if analysis_type == "topic":
-                    results = analyse_topics(
-                        model_df=st.session_state.model_df,
-                        response_column=(
-                            st.session_state.response_column
-                        ),
-                        survey_question=(
-                            st.session_state.survey_question
-                        ),
-                        embedding_model=embedding_model,
-                        checkpoint=st.session_state.topic_checkpoint,
-                        save_checkpoint=lambda value: st.session_state.update(
-                            topic_checkpoint=value
-                        ),
-                    )
-
-                else:
-                    results = analyse_sentiment(
-                        clean_df=st.session_state.working_df,
-                        model_df=st.session_state.model_df,
-                        response_column=st.session_state.response_column,
-                        survey_question=st.session_state.survey_question,
-                        embedding_model=embedding_model,
-                        checkpoint=st.session_state.topic_checkpoint,
-                        save_checkpoint=lambda value: st.session_state.update(
-                            topic_checkpoint=value
-                        ),
-                    )
-
-            st.session_state.analysis_type = analysis_type
-            st.session_state.analysis_results = results
-
-            # Recommendations are a final stage of the same analysis, not a
-            # separate user-triggered workflow. A Gemini failure here must
-            # never discard the completed BERTopic / sentiment results.
-            try:
-                with st.spinner("Preparing evidence-based recommendations..."):
-                    recommendation_evidence = prepare_recommendation_evidence(
-                        results, analysis_type
-                    )
-                    recommendations = generate_recommendations(recommendation_evidence)
-                st.session_state.recommendation_evidence = recommendation_evidence
-                st.session_state.recommendations = recommendations
-            except Exception as rec_exc:
-                st.session_state.recommendation_error = (
-                    f"{type(rec_exc).__name__}: {rec_exc}"
-                )
-                st.warning(
-                    "The analysis completed, but recommendations could not be "
-                    "generated: " + st.session_state.recommendation_error
-                )
-
-            st.success("Analysis completed successfully.")
-
-        except Exception as exc:
-            st.session_state.analysis_error = (
-                f"{type(exc).__name__}: {exc}"
+            with st.spinner("Preparing evidence-based recommendations..."):
+                recommendation_evidence = prepare_recommendation_evidence(results, analysis_type)
+                recommendations = generate_recommendations(recommendation_evidence)
+            st.session_state.recommendation_evidence = recommendation_evidence
+            st.session_state.recommendations = recommendations
+        except Exception as rec_exc:
+            st.session_state.recommendation_error = (
+                f"{type(rec_exc).__name__}: {rec_exc}"
             )
-
-            st.error(
-                f"Analysis failed: "
-                f"{st.session_state.analysis_error}"
-            )
-
-    if st.session_state.analysis_results is not None:
-        st.button(
-            "View Results",
-            type="primary",
-            on_click=navigate,
-            args=("Results",),
-        )
-
-    elif st.session_state.analysis_error:
-        st.warning(st.session_state.analysis_error)
+            st.warning("Analysis completed, but recommendations were unavailable. "
+                       "You can still view and export your findings.")
+        return True
+    except Exception as exc:
+        st.session_state.analysis_error = f"{type(exc).__name__}: {exc}"
+        st.error(f"Analysis failed: {st.session_state.analysis_error}")
+        return False
 
 
 # ============================================================
@@ -2478,9 +2253,9 @@ def show_results():
         st.warning("Run an analysis first.")
 
         st.button(
-            "Go to Analyse",
+            "Upload & Configure",
             on_click=navigate,
-            args=("Analyse",),
+            args=("Upload & Configure",),
         )
         return
 
@@ -2491,30 +2266,9 @@ def show_results():
         if analysis_type == "topic"
         else "Topic-first sentiment analysis"
     )
+    st.button("Start a new analysis", on_click=navigate, args=("Home",))
 
-    # Download the completed interactive results directly from the Results page.
-    try:
-        coded_html, dictionary_html = build_coded_outputs(results, analysis_type)
-        standalone_html = build_interactive_html(
-            results=results,
-            analysis_type=analysis_type,
-            coded=coded_html,
-            dictionary=dictionary_html,
-            recommendations=st.session_state.recommendations,
-            recommendation_evidence=st.session_state.recommendation_evidence,
-            survey_question=st.session_state.survey_question,
-            response_column=st.session_state.response_column,
-            id_column=st.session_state.id_column,
-        )
-        st.download_button(
-            "Download Interactive HTML — Complete Results",
-            data=standalone_html,
-            file_name="algorithemes_results.html",
-            mime="text/html",
-            key="download_html_from_results",
-        )
-    except Exception as exc:
-        st.warning(f"Interactive HTML export unavailable: {exc}")
+    # All exports are available in the Downloads tab below.
 
     # The first tab reflects whether broader theme grouping was performed.
     tabs = st.tabs([
@@ -2522,6 +2276,7 @@ def show_results():
         "Response Explorer",
         "Recommendations",
         "Report",
+        "Downloads",
     ])
 
     with tabs[0]:
@@ -2545,13 +2300,19 @@ def show_results():
             analysis_type,
         )
 
+    with tabs[4]:
+        show_export(embedded=True)
+
 
 # ============================================================
 # EXPORT — EXISTING FUNCTIONALITY
 # ============================================================
 
-def show_export():
-    st.title("Export")
+def show_export(embedded=False):
+    if not embedded:
+        st.title("Export")
+    else:
+        st.subheader("Download your analysis")
     results = st.session_state.analysis_results
     if results is None:
         st.warning("Complete an analysis before exporting.")
@@ -2623,45 +2384,44 @@ def main():
     with st.sidebar:
         st.title("AlgoriThemes")
         st.caption("Open-ended survey analysis")
-
-        current = (
-            st.session_state.page
-            if st.session_state.page in PAGES
-            else "Home"
-        )
-
-        selected = st.radio(
-            "Navigation",
-            PAGES,
-            index=PAGES.index(current),
-        )
-
-        st.session_state.page = selected
-
+        for page in PAGES:
+            st.button(
+                page,
+                key=f"nav_{page}",
+                use_container_width=True,
+                type="primary" if st.session_state.page == page else "secondary",
+                on_click=set_page,
+                args=(page,),
+            )
         st.divider()
-
         if st.session_state.dataset_name:
-            st.caption(
-                f"Dataset: "
-                f"{st.session_state.dataset_name}"
-            )
-
+            st.caption(f"Dataset: {st.session_state.dataset_name}")
         if st.session_state.analysis_type:
-            st.caption(
-                f"Latest analysis: "
-                f"{st.session_state.analysis_type.title()}"
+            st.caption(f"Latest analysis: {st.session_state.analysis_type.title()}")
+
+    # Demo buttons bypass Upload & Configure: run the existing pipeline
+    # once, then display Results automatically on successful completion.
+    pending_demo = st.session_state.pending_demo_analysis
+    if pending_demo is not None:
+        # Clear before executing so Streamlit reruns never repeat the analysis.
+        st.session_state.pending_demo_analysis = None
+        st.info("Running the sample analysis. Results will appear automatically when it finishes.")
+        if not execute_analysis(pending_demo):
+            st.session_state.demo_error = (
+                "The demo analysis could not be completed: "
+                + str(st.session_state.analysis_error or "Unknown error")
             )
+            st.session_state.page = "Home"
+            st.rerun()
+        # Keep Results selected and show the newly generated findings below.
+        st.session_state.page = "Results"
 
     pages = {
         "Home": show_home,
-        "Upload Data": show_upload,
-        "Configure": show_configure,
-        "Analyse": show_analyse,
+        "Upload & Configure": show_upload_and_configure,
         "Results": show_results,
-        "Export": show_export,
         "About": show_about,
     }
-
     pages[st.session_state.page]()
 
 
