@@ -8,7 +8,10 @@ The original BERTopic, Gemini and export modules remain separate; RoBERTa provid
 from __future__ import annotations
 
 import io
+import html
 import hashlib
+import base64
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -35,9 +38,12 @@ from outputs import (
 )
 
 
+ASSETS_DIR = Path(__file__).resolve().parent / "assets"
+
+
 st.set_page_config(
-    page_title="AlgoriThemes",
-    page_icon="📊",
+    page_title="AlgoriThemes | From Responses to Insights",
+    page_icon=str(ASSETS_DIR / "algorithemes_icon.png"),
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -45,24 +51,502 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    [data-testid="stSidebar"] {
-        background: #321b45;
+    /* AlgoriThemes — muted professional light theme. Presentation only. */
+    :root {
+        --at-purple: #604582;
+        --at-purple-hover: #4E356E;
+        --at-teal: #147E7A;
+        --at-ink: #252A3C;
+        --at-muted: #62687A;
+        --at-line: #C5BFCE;
+        --at-bg: #DCD9E2;
+        --at-sidebar: #CDC8D5;
+        --at-card: #EAE7EE;
+        --at-input: #F1EFF4;
     }
-    [data-testid="stSidebar"] * {
-        color: #f9f4fc !important;
+
+    /* Shared page grid: same left/right alignment on every route. */
+    .stApp, [data-testid="stAppViewContainer"] {
+        background: var(--at-bg);
+        color: var(--at-ink);
     }
-    .block-container {
-        padding-top: 1.5rem;
-        max-width: 1450px;
+    [data-testid="stHeader"] { background: rgba(220, 217, 226, .96); }
+    [data-testid="stMainBlockContainer"], .block-container {
+        width: 100%;
+        max-width: 1160px !important;
+        margin-left: auto;
+        margin-right: auto;
+        padding-top: 2.25rem;
+        padding-bottom: 3rem;
+        padding-left: 2.25rem;
+        padding-right: 2.25rem;
     }
-    h1, h2, h3 {
-        letter-spacing: -0.025em;
+    h1, h2, h3 { color: var(--at-ink); letter-spacing: -.025em; }
+    h1 { font-weight: 750; }
+    p, label { color: inherit; }
+    [data-testid="stCaptionContainer"] { color: var(--at-muted); }
+
+    
+
+    /* Sidebar: clear contrast from the workspace and fixed icon/text columns. */
+    section[data-testid="stSidebar"] {
+        background: var(--at-sidebar);
+        border-right: 1px solid #B8B1C3;
+    }
+    [data-testid="stSidebar"] > div,
+    [data-testid="stSidebarContent"] {
+        background: var(--at-sidebar);
+    }
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+        gap: .36rem !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stImage"] {
+        margin: .35rem 0 .75rem;
+    }
+    .at-workspace-label {
+        margin: .6rem 0 .55rem;
+        color: #6D6B7B;
+        font-size: .72rem;
+        font-weight: 750;
+        letter-spacing: .115em;
+    }
+    [data-testid="stSidebar"] .stButton,
+    [data-testid="stSidebar"] [data-testid="stButton"] {
+        width: 100%;
+        margin: 0 !important;
+    }
+    [data-testid="stSidebar"] .stButton > button,
+    [data-testid="stSidebar"] [data-testid="stButton"] > button {
+        width: 100%;
+        min-height: 2.85rem;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: .8rem !important;
+        padding: .58rem .85rem !important;
+        text-align: left !important;
+        border-radius: 9px;
+        box-shadow: none;
+        font-size: .89rem;
+        font-weight: 600;
+    }
+    [data-testid="stSidebar"] .stButton > button [data-testid="stIconMaterial"],
+    [data-testid="stSidebar"] [data-testid="stButton"] > button [data-testid="stIconMaterial"] {
+        display: inline-flex !important;
+        flex: 0 0 21px !important;
+        width: 21px !important;
+        min-width: 21px !important;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.13rem;
+        line-height: 1;
+        margin: 0 !important;
+    }
+    [data-testid="stSidebar"] .stButton > button [data-testid="stMarkdownContainer"],
+    [data-testid="stSidebar"] [data-testid="stButton"] > button [data-testid="stMarkdownContainer"] {
+        flex: 1 1 auto;
+        min-width: 0;
+        text-align: left !important;
+    }
+    [data-testid="stSidebar"] .stButton > button p,
+    [data-testid="stSidebar"] [data-testid="stButton"] > button p {
+        text-align: left !important;
+        margin: 0;
+    }
+    [data-testid="stSidebar"] .stButton > button[kind="secondary"],
+    [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="secondary"] {
+        background: transparent;
+        border: 1px solid transparent;
+        color: #41465A;
+    }
+    [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover,
+    [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="secondary"]:hover {
+        background: #C0B9CD;
+        border-color: #C0B9CD;
+        color: #583A83;
+    }
+    [data-testid="stSidebar"] .stButton > button[kind="primary"],
+    [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="primary"] {
+        background: var(--at-purple);
+        border-color: var(--at-purple);
+        color: #fff;
+    }
+    [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover,
+    [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="primary"]:hover {
+        background: var(--at-purple-hover);
+        border-color: var(--at-purple-hover);
+    }
+    [data-testid="stSidebar"] hr { border-color: #D0CBD8; margin: 1.1rem 0 .75rem; }
+    .at-sidebar-meta { padding: .4rem .1rem .2rem; }
+    .at-sidebar-meta-label {
+        color: #777487;
+        font-size: .67rem;
+        font-weight: 750;
+        letter-spacing: .09em;
+        text-transform: uppercase;
+        margin-bottom: .28rem;
+    }
+    .at-sidebar-meta-value {
+        color: #4A4A5C;
+        font-size: .81rem;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+        margin-bottom: .9rem;
+    }
+
+    /* Low-glare surfaces and controls. */
+    .stButton > button, .stDownloadButton > button {
+        border-radius: 9px;
+        min-height: 2.65rem;
+        font-weight: 600;
+        transition: background-color .15s ease, border-color .15s ease;
+    }
+    .stButton > button[kind="primary"], .stDownloadButton > button[kind="primary"] {
+        background: var(--at-purple);
+        border-color: var(--at-purple);
+        color: #fff;
+    }
+    .stButton > button[kind="primary"]:hover,
+    .stDownloadButton > button[kind="primary"]:hover {
+        background: var(--at-purple-hover);
+        border-color: var(--at-purple-hover);
+    }
+    .stButton > button[kind="secondary"], .stDownloadButton > button[kind="secondary"] {
+        background: var(--at-input);
+        border-color: var(--at-line);
+        color: #3B4154;
+    }
+    .stButton > button[kind="secondary"]:hover,
+    .stDownloadButton > button[kind="secondary"]:hover {
+        background: #E1DCE8;
+        border-color: #B9A8CE;
+        color: var(--at-purple-hover);
     }
     [data-testid="stMetric"] {
-        border: 1px solid rgba(128,128,128,.22);
+        background: var(--at-card);
+        border: 1px solid var(--at-line);
         border-radius: 12px;
-        padding: 14px;
+        padding: 14px 16px;
     }
+    [data-testid="stMetricLabel"] { color: var(--at-muted); }
+    [data-baseweb="tab-list"] { border-bottom: 1px solid var(--at-line); }
+    [data-baseweb="tab"] { color: #5B5B6C; }
+    [data-testid="stVerticalBlockBorderWrapper"]:has(.at-route-marker) {
+        background: var(--at-card);
+        border: 1px solid #C2BDCB;
+        border-radius: 14px;
+        box-shadow: 0 4px 16px rgba(35, 31, 51, .035);
+    }
+    [data-testid="stVerticalBlockBorderWrapper"]:has(.at-route-marker):hover {
+        border-color: #B8A9CB;
+    }
+    [data-testid="stExpander"] { border-color: var(--at-line); }
+    [data-baseweb="input"] > div, [data-baseweb="textarea"] > div,
+    [data-baseweb="select"] > div {
+        background-color: var(--at-input);
+    }
+
+    /* Home: same shared content column as Results, Upload and About. */
+    .at-home-head { padding: .15rem 0 .95rem; margin-bottom: .25rem; }
+    .at-brand-logo {
+        width: min(100%, 265px);
+        height: auto;
+        display: block;
+        margin: 0 0 1.55rem;
+    }
+    .at-kicker {
+        color: var(--at-purple);
+        font-size: .72rem;
+        font-weight: 750;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        margin: 0 0 .65rem;
+    }
+    .at-home-head h1 {
+        font-size: clamp(1.7rem, 2.7vw, 2.15rem);
+        line-height: 1.2;
+        margin: 0 0 .65rem;
+        color: var(--at-ink);
+        font-weight: 750;
+    }
+    .at-home-head p {
+        color: #5A6071;
+        font-size: 1rem;
+        line-height: 1.65;
+        max-width: 680px;
+        margin: 0;
+    }
+    .at-section-label {
+        color: #444A5E;
+        font-size: .86rem;
+        font-weight: 700;
+        margin: .7rem 0 .8rem;
+    }
+    .at-route-marker { height: 0; overflow: hidden; }
+    .at-route-icon {
+        display: inline-flex;
+        width: 38px;
+        height: 38px;
+        align-items: center;
+        justify-content: center;
+        background: #DFD6E9;
+        color: var(--at-purple);
+        border-radius: 10px;
+        font-size: .84rem;
+        font-weight: 750;
+        letter-spacing: .02em;
+        margin: .15rem 0 .75rem;
+    }
+    .at-route-icon.teal { color: #106F6B; background: #DFEEEB; }
+    .at-route-title {
+        font-size: 1.12rem;
+        font-weight: 750;
+        color: var(--at-ink);
+        letter-spacing: -.02em;
+        margin: 0 0 .45rem;
+    }
+    .at-route-description {
+        font-size: .92rem;
+        color: #5B6172;
+        line-height: 1.6;
+        min-height: 4.3rem;
+        margin: 0 0 .5rem;
+    }
+    .at-footnote { color: #686D7F; font-size: .81rem; margin: 1rem 0 0; }
+    @media (max-width: 700px) {
+        [data-testid="stMainBlockContainer"], .block-container {
+            padding-top: 1.1rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+        .at-brand-logo { width: min(100%, 245px); margin-bottom: 1.1rem; }
+        .at-route-description { min-height: 0; }
+    }
+
+
+    /* Homepage onboarding: compact, clearly sequenced, and subordinate to route choice. */
+    .at-sentiment-guidance {
+        display: flex;
+        gap: .85rem;
+        align-items: flex-start;
+        margin: 1.15rem 0 1.55rem;
+        padding: .95rem 1.1rem;
+        background: #E3E0EB;
+        border: 1px solid #BEB5CF;
+        border-left: 3px solid var(--at-purple);
+        border-radius: 10px;
+        color: var(--at-ink);
+    }
+    .at-guidance-icon {
+        display: inline-flex;
+        flex: 0 0 24px;
+        width: 24px;
+        height: 24px;
+        justify-content: center;
+        align-items: center;
+        border: 1.5px solid #6E568D;
+        border-radius: 50%;
+        font-size: .82rem;
+        font-weight: 750;
+        color: #604582;
+    }
+    .at-guidance-heading {
+        margin: 0 0 .2rem;
+        font-size: .89rem;
+        font-weight: 750;
+        color: #302B42;
+    }
+    .at-guidance-copy {
+        margin: 0;
+        font-size: .86rem;
+        line-height: 1.6;
+        color: #4D4A5C;
+    }
+    .at-steps {
+        margin: .4rem 0 1.1rem;
+        padding: 1rem 1.15rem 1.05rem;
+        border: 1px solid #C5BFCE;
+        border-radius: 12px;
+        background: #E6E3EB;
+    }
+    .at-steps-heading {
+        margin: 0 0 .95rem;
+        font-size: .88rem;
+        font-weight: 750;
+        color: #303246;
+    }
+    .at-steps-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.15rem;
+    }
+    .at-step { min-width: 0; }
+    .at-step-top {
+        display: flex;
+        align-items: center;
+        gap: .7rem;
+        margin-bottom: .6rem;
+    }
+    .at-step-number {
+        display: inline-flex;
+        width: 30px;
+        height: 30px;
+        flex: 0 0 30px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #D8CDE5;
+        border: 1px solid #B5A4CC;
+        color: #563B79;
+        font-size: .81rem;
+        font-weight: 750;
+    }
+    .at-step-rule { height: 1px; flex: 1; background: #BFB7CA; }
+    .at-step-title {
+        margin: 0 0 .25rem;
+        color: #2B2D40;
+        font-size: .89rem;
+        font-weight: 750;
+    }
+    .at-step-copy {
+        margin: 0;
+        color: #555669;
+        font-size: .82rem;
+        line-height: 1.55;
+    }
+    @media (max-width: 700px) {
+        .at-steps-grid { grid-template-columns: 1fr; gap: .95rem; }
+        .at-step-top { margin-bottom: .35rem; }
+        .at-step-rule { display: none; }
+        .at-sentiment-guidance { margin: 1rem 0 1.2rem; }
+    }
+
+    /* NAV FIX v2: Streamlit may centre the INNER button content wrapper.
+       Align the outer button AND its nested icon/text wrapper. */
+    section[data-testid="stSidebar"] [data-testid="stButton"] button,
+    section[data-testid="stSidebar"] .stButton button,
+    section[data-testid="stSidebar"] button[data-testid^="stBaseButton"] {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        text-align: left !important;
+        width: 100% !important;
+        padding-left: 14px !important;
+        padding-right: 12px !important;
+        gap: 11px !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stButton"] button > div,
+    section[data-testid="stSidebar"] .stButton button > div {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        text-align: left !important;
+        gap: 11px !important;
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stButton"] button [data-testid="stIconMaterial"],
+    section[data-testid="stSidebar"] .stButton button [data-testid="stIconMaterial"] {
+        flex: 0 0 20px !important;
+        width: 20px !important;
+        min-width: 20px !important;
+        margin: 0 !important;
+        text-align: center !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stButton"] button [data-testid="stMarkdownContainer"],
+    section[data-testid="stSidebar"] .stButton button [data-testid="stMarkdownContainer"] {
+        flex: 0 1 auto !important;
+        width: auto !important;
+        text-align: left !important;
+        margin: 0 !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stButton"] button p,
+    section[data-testid="stSidebar"] .stButton button p {
+        margin: 0 !important;
+        text-align: left !important;
+        white-space: nowrap;
+    }
+    /* Lower-glare native Streamlit surfaces (not just custom cards). */
+    [data-testid="stAlert"], [data-testid="stNotification"] {
+        border-color: var(--at-line);
+    }
+    [data-testid="stFileUploaderDropzone"] {
+        background: var(--at-card);
+        border-color: var(--at-line);
+    }
+    /* v4: Accessible, distinct status notices without the original neon tints.
+       Streamlit uses stAlertContentInfo / Warning / Success / Error test IDs
+       in its alert body. :has() identifies the semantic type reliably without
+       relying on optional data-type or BaseWeb kind attributes. */
+    [data-testid="stAlert"] {
+        --at-notice-bg: #E2E4EB;
+        --at-notice-border: #A9B0C1;
+        --at-notice-accent: #5E6B87;
+        --at-notice-ink: #26354B;
+    }
+    [data-testid="stAlert"]:has([data-testid="stAlertContentInfo"]),
+    [data-testid="stAlert"][data-type="info"],
+    [data-testid="stAlert"]:has([data-baseweb="notification"][kind="info"]) {
+        --at-notice-bg: #D7E8F2;
+        --at-notice-border: #7FA9C3;
+        --at-notice-accent: #387CA2;
+        --at-notice-ink: #253A4A;
+    }
+    [data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]),
+    [data-testid="stAlert"][data-type="warning"],
+    [data-testid="stAlert"]:has([data-baseweb="notification"][kind="warning"]) {
+        --at-notice-bg: #F3E5C9;
+        --at-notice-border: #C69B50;
+        --at-notice-accent: #A66B20;
+        --at-notice-ink: #4B3A22;
+    }
+    [data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"]),
+    [data-testid="stAlert"][data-type="success"],
+    [data-testid="stAlert"]:has([data-baseweb="notification"][kind="positive"]) {
+        --at-notice-bg: #DCEBE1;
+        --at-notice-border: #85B49B;
+        --at-notice-accent: #358363;
+        --at-notice-ink: #264336;
+    }
+    [data-testid="stAlert"]:has([data-testid="stAlertContentError"]),
+    [data-testid="stAlert"][data-type="error"],
+    [data-testid="stAlert"]:has([data-baseweb="notification"][kind="negative"]) {
+        --at-notice-bg: #F1DDDF;
+        --at-notice-border: #CB8F99;
+        --at-notice-accent: #B44E61;
+        --at-notice-ink: #502D35;
+    }
+    /* Style the actual alert surface. The fallback avoids double borders
+       on Streamlit versions whose notification element is absent. */
+    [data-testid="stAlert"] [data-baseweb="notification"],
+    [data-testid="stAlert"]:not(:has([data-baseweb="notification"])) > div {
+        background-color: var(--at-notice-bg) !important;
+        border: 1px solid var(--at-notice-border) !important;
+        border-left: 5px solid var(--at-notice-accent) !important;
+        border-radius: 10px !important;
+        box-shadow: none !important;
+    }
+    [data-testid="stAlert"] [data-testid="stMarkdownContainer"],
+    [data-testid="stAlert"] [data-testid="stMarkdownContainer"] p,
+    [data-testid="stAlert"] [data-testid="stMarkdownContainer"] strong {
+        color: var(--at-notice-ink) !important;
+        opacity: 1 !important;
+    }
+    /* Preserve the status icon, if the Streamlit version renders one. */
+    [data-testid="stAlert"] svg {
+        color: var(--at-notice-accent) !important;
+    }
+    /* Keep low-priority descriptions readable, including the Home privacy note. */
+    [data-testid="stCaptionContainer"],
+    [data-testid="stCaptionContainer"] p,
+    [data-testid="stCaptionContainer"] span {
+        color: #53576A !important;
+        opacity: 1 !important;
+    }
+    .at-footnote { color: #53576A !important; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -74,6 +558,13 @@ PAGES = [
     "Results",
     "About",
 ]
+
+NAV_ICONS = {
+    "Home": ":material/home:",
+    "Upload & Configure": ":material/upload_file:",
+    "Results": ":material/analytics:",
+    "About": ":material/info:",
+}
 
 SENTIMENT_ORDER = ["Positive", "Neutral", "Negative"]
 
@@ -495,84 +986,110 @@ def select_own_data_route(route):
 
 
 def show_home():
-    st.title("AlgoriThemes")
-    st.write(
-        "Turn open-ended survey responses into clear themes and topics. "
-        "Discover recurring topics, understand people's experiences, and turn feedback into insights."
+    # A compact, cohesive light homepage; demo and upload callbacks are unchanged.
+    logo_path = ASSETS_DIR / "algorithemes_logo_dark.png"
+    logo_uri = "data:image/png;base64," + base64.b64encode(logo_path.read_bytes()).decode("ascii")
+    st.markdown(
+        f"""
+        <section class="at-home-head">
+            <img class="at-brand-logo" src="{logo_uri}" alt="AlgoriThemes — From Responses to Insights" />
+            <div class="at-kicker">AI-powered feedback analysis</div>
+            <h1>Explore your feedback</h1>
+            <p>Find recurring themes, understand sentiment and turn written survey responses
+            into insights you can explore and share.</p>
+        </section>
+        """,
+        unsafe_allow_html=True,
     )
-
+    # The homepage selects the route first; upload and configuration come next.
+    st.markdown(
+        """<section class="at-steps" aria-label="How AlgoriThemes works">
+            <div class="at-steps-heading">How it works</div>
+            <div class="at-steps-grid">
+                <div class="at-step">
+                    <div class="at-step-top"><span class="at-step-number">1</span><span class="at-step-rule"></span></div>
+                    <div class="at-step-title">Choose your analysis</div>
+                    <p class="at-step-copy">Select topics only, or topics and sentiment.</p>
+                </div>
+                <div class="at-step">
+                    <div class="at-step-top"><span class="at-step-number">2</span><span class="at-step-rule"></span></div>
+                    <div class="at-step-title">Upload &amp; configure</div>
+                    <p class="at-step-copy">Upload a CSV or Excel file and configure the column to analyse.</p>
+                </div>
+                <div class="at-step">
+                    <div class="at-step-top"><span class="at-step-number">3</span></div>
+                    <div class="at-step-title">Explore your insights</div>
+                    <p class="at-step-copy">Explore topics, review sentiment if selected, and export results.</p>
+                </div>
+            </div>
+        </section>""",
+        unsafe_allow_html=True,
+    )
+    st.markdown('<div class="at-section-label">Choose your analysis</div>', unsafe_allow_html=True)
     left, right = st.columns(2, gap="large")
 
-    # ==========================================
-    # TOPIC ANALYSIS
-    # ==========================================
     with left:
-        st.subheader("Explore topics")
-        st.write(
-            "Find the main themes and topics in your responses. "
-            "When there are many topics, group related ones into broader themes."
-        )
+        with st.container(border=True):
+            st.markdown(
+                """<div class="at-route-marker"></div>
+                <div class="at-route-title">Explore topics</div>
+                <p class="at-route-description">Identify the main topics in your responses
+                and group related topics into broader themes.</p>""",
+                unsafe_allow_html=True,
+            )
+            st.button(
+                "Upload my data", key="own_topics", type="primary",
+                on_click=select_own_data_route, args=("topic",),
+                use_container_width=True,
+            )
+            st.button(
+                "Try topic analysis demo", key="demo_topics", type="secondary",
+                on_click=select_demo_route, args=("topic",),
+                use_container_width=True,
+            )
 
-        st.button(
-            "Upload my data",
-            key="own_topics",
-            type="primary",
-            on_click=select_own_data_route,
-            args=("topic",),
-            use_container_width=True,
-        )
-
-        st.button(
-            "Try topic analysis demo",
-            key="demo_topics",
-            type="secondary",
-            on_click=select_demo_route,
-            args=("topic",),
-            use_container_width=True,
-        )
-
-    # ==========================================
-    # TOPIC + SENTIMENT ANALYSIS
-    # ==========================================
     with right:
-        st.subheader("Explore topics and sentiment")
-        st.write(
-            "Discover what people are talking about and compare positive, "
-            "neutral, and negative feedback within each topic."
-        )
+        with st.container(border=True):
+            st.markdown(
+                """<div class="at-route-marker"></div>
+                <div class="at-route-title">Explore topics and sentiment</div>
+                <p class="at-route-description">Identify what people discuss and compare
+                positive, neutral and negative responses within each topic.</p>""",
+                unsafe_allow_html=True,
+            )
+            st.button(
+                "Upload my data", key="own_sentiment", type="primary",
+                on_click=select_own_data_route, args=("sentiment",),
+                use_container_width=True,
+            )
+            st.button(
+                "Try sentiment analysis demo", key="demo_sentiment", type="secondary",
+                on_click=select_demo_route, args=("sentiment",),
+                use_container_width=True,
+            )
 
-        st.button(
-            "Upload my data",
-            key="own_sentiment",
-            type="primary",
-            on_click=select_own_data_route,
-            args=("sentiment",),
-            use_container_width=True,
-        )
-
-        st.button(
-            "Try sentiment analysis demo",
-            key="demo_sentiment",
-            type="secondary",
-            on_click=select_demo_route,
-            args=("sentiment",),
-            use_container_width=True,
-        )
-
-    # ==========================================
-    # DEMO INFORMATION
-    # ==========================================
-    st.caption(
-        "Demos use up to 100 sampled responses from real research datasets. "
-        "When saved results are available, they open immediately; otherwise "
-        "the demo runs the full analysis once."
+    st.markdown(
+        '<p class="at-footnote">Try a demo using sample survey responses, or upload your own dataset.</p>',
+        unsafe_allow_html=True,
     )
+    # Explain route suitability at the point of choice; do not make it a warning.
+    st.markdown(
+        """<aside class="at-sentiment-guidance" aria-label="When to choose sentiment analysis">
+            <span class="at-guidance-icon" aria-hidden="true">i</span>
+            <div>
+                <div class="at-guidance-heading">When should you choose sentiment analysis?</div>
+                <p class="at-guidance-copy">Choose topics and sentiment when responses express
+                how people feel, such as reviews, comments about an experience, or complaints. Topic analysis is
+                more appropriate when people give suggestions, requests or facts, such as "What one action could help?".</p>
+            </div>
+        </aside>""",
+        unsafe_allow_html=True,
+    )
+
     if st.session_state.get("demo_cache_warning"):
         st.warning(st.session_state.demo_cache_warning)
-
     if st.session_state.get("demo_error"):
         st.error(st.session_state.demo_error)
-
     st.divider()
 
     # ==========================================
@@ -612,8 +1129,8 @@ def show_home():
     # ==========================================
     # PRIVACY NOTE
     # ==========================================
-    st.info(
-        "Privacy note: Remove identifying information before analysing "
+    st.caption(
+        "Privacy: Remove identifying information before analysing "
         "sensitive survey responses with external AI services."
     )
 
@@ -699,6 +1216,16 @@ def show_about():
             "opinions can affect its predictions on survey responses."
         )
         st.markdown(
+            "**When to use this analysis**\n"
+            "- Most useful for open-ended responses containing opinions, evaluations, "
+            "satisfaction, dissatisfaction, or descriptions of experiences.\n"
+            "- For mainly factual or descriptive responses, topic analysis alone "
+            "is often more informative.\n"
+            "- Sentiment is a prediction for the entire response, not a measure "
+            "of sentiment toward each individual topic. Review mixed or "
+            "context-dependent responses before drawing conclusions."
+        )
+        st.markdown(
             "[View the sentiment model](https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment-latest)"
         )
 
@@ -776,6 +1303,11 @@ def show_upload_and_configure():
     route = st.session_state.analysis_route_selector
     route_label = "Topic analysis" if route == "topic" else "Topic + sentiment analysis"
     st.info(f"Selected on Home: **{route_label}**. To change the analysis route, return to Home.")
+    if route == "sentiment":
+        st.caption(
+            "Sentiment analysis is most useful for opinion-based or evaluative responses. "
+            "For mainly factual answers, consider choosing topic analysis on Home."
+        )
 
     st.subheader("1. Upload data")
     upload = st.file_uploader(
@@ -2288,7 +2820,7 @@ def show_results():
     results = st.session_state.analysis_results
 
     if results is None:
-        st.warning("Run an analysis first.")
+        st.info("Run an analysis first.")
 
         st.button(
             "Upload & Configure",
@@ -2450,11 +2982,12 @@ def main():
     initialize_state()
 
     with st.sidebar:
-        st.title("AlgoriThemes")
-        st.caption("Open-ended survey analysis")
+        st.image(str(ASSETS_DIR / "algorithemes_logo_dark.png"), width=205)
+        st.markdown('<div class="at-workspace-label">WORKSPACE</div>', unsafe_allow_html=True)
         for page in PAGES:
             st.button(
                 page,
+                icon=NAV_ICONS[page],
                 key=f"nav_{page}",
                 use_container_width=True,
                 type="primary" if st.session_state.page == page else "secondary",
@@ -2463,9 +2996,17 @@ def main():
             )
         st.divider()
         if st.session_state.dataset_name:
-            st.caption(f"Dataset: {st.session_state.dataset_name}")
+            st.markdown(
+                '<div class="at-sidebar-meta"><div class="at-sidebar-meta-label">Dataset</div>'
+                f'<div class="at-sidebar-meta-value">{html.escape(str(st.session_state.dataset_name))}</div></div>',
+                unsafe_allow_html=True,
+            )
         if st.session_state.analysis_type:
-            st.caption(f"Latest analysis: {st.session_state.analysis_type.title()}")
+            st.markdown(
+                '<div class="at-sidebar-meta"><div class="at-sidebar-meta-label">Latest analysis</div>'
+                f'<div class="at-sidebar-meta-value">{html.escape(str(st.session_state.analysis_type.title()))}</div></div>',
+                unsafe_allow_html=True,
+            )
 
     # Demo buttons bypass Upload & Configure: run the existing pipeline
     # once, then display Results automatically on successful completion.
