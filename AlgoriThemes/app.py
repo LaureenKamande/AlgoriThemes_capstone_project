@@ -123,6 +123,8 @@ def initialize_state():
         "demo_loaded": False,
         "demo_error": None,
         "pending_demo_analysis": None,
+        "demo_precomputed": False,
+        "demo_cache_warning": None,
     }
 
     for key, value in defaults.items():
@@ -385,8 +387,37 @@ def likely_open_ended_columns(df):
 
 
 def select_demo_route(route):
-    """Load a real demo dataset using the same preparation as user uploads."""
+    """Open a saved demo immediately, or run the real pipeline if not yet saved."""
+    from demo_snapshots import build_mode, load_demo_snapshot
     from demo_data import get_demo_dataset, get_demo_settings
+
+    st.session_state.demo_cache_warning = None
+    if not build_mode():
+        try:
+            snapshot = load_demo_snapshot(route)
+        except Exception as exc:
+            # A broken or incompatible cache must never prevent live analysis.
+            snapshot = None
+            st.session_state.demo_cache_warning = (
+                f"Saved demo could not be loaded ({type(exc).__name__}: {exc}). "
+                "Running a fresh analysis instead."
+            )
+        if snapshot is not None:
+            clear_preparation()
+            st.session_state.pop("dataset_upload", None)
+            st.session_state.update(snapshot["state"])
+            st.session_state.update({
+                "analysis_route_selector": route,
+                "page": "Results",
+                "upload_signature": None,
+                "demo_loaded": True,
+                "demo_precomputed": True,
+                "demo_error": None,
+                "pending_demo_analysis": None,
+            })
+            return
+
+    # First run (or explicit build mode): use the original real dataset.
 
     # Validate and prepare before touching the existing session, so a
     # missing/misconfigured demo file does not discard the user's work.
@@ -433,6 +464,7 @@ def select_demo_route(route):
         "page": "Results",
         "upload_signature": None,
         "demo_loaded": True,
+        "demo_precomputed": False,
         "demo_error": None,
         # The next Streamlit run starts analysis automatically. No extra click.
         "pending_demo_analysis": route,
@@ -451,6 +483,8 @@ def select_own_data_route(route):
         st.session_state.survey_question = ""
         st.session_state.upload_signature = None
     st.session_state.demo_loaded = False
+    st.session_state.demo_precomputed = False
+    st.session_state.demo_cache_warning = None
     st.session_state.demo_error = None
     set_page("Upload & Configure")
 
@@ -530,8 +564,11 @@ def show_home():
     # ==========================================
     st.caption(
         "Demos use up to 100 sampled responses from real research datasets. "
-        "No results are precomputed."
+        "When saved results are available, they open immediately; otherwise "
+        "the demo runs the full analysis once."
     )
+    if st.session_state.get("demo_cache_warning"):
+        st.warning(st.session_state.demo_cache_warning)
 
     if st.session_state.get("demo_error"):
         st.error(st.session_state.demo_error)
@@ -773,6 +810,7 @@ def show_upload_and_configure():
                 "sheet_name": sheet,
                 "survey_question": "",
                 "demo_loaded": False,
+                "demo_precomputed": False,
                 "upload_signature": signature,
             })
 
@@ -2260,15 +2298,43 @@ def show_results():
         return
 
     analysis_type = st.session_state.analysis_type
-
     st.caption(
         "Topic modelling"
         if analysis_type == "topic"
         else "Topic-first sentiment analysis"
     )
-    st.button("Start a new analysis", on_click=navigate, args=("Home",))
+    # Keep the complete interactive HTML export accessible from the Results header.
+    # Build it once and reuse the same payload in the Downloads tab.
+    html_bytes = None
+    try:
+        coded_for_html, dictionary_for_html = build_coded_outputs(results, analysis_type)
+        html_bytes = build_interactive_html(
+            results=results,
+            analysis_type=analysis_type,
+            coded=coded_for_html,
+            dictionary=dictionary_for_html,
+            recommendations=st.session_state.recommendations,
+            recommendation_evidence=st.session_state.recommendation_evidence,
+            survey_question=st.session_state.survey_question,
+            response_column=st.session_state.response_column,
+            id_column=st.session_state.id_column,
+        )
+    except Exception as exc:
+        st.warning(f"Interactive HTML export unavailable: {exc}")
 
-    # All exports are available in the Downloads tab below.
+    new_analysis_col, html_export_col = st.columns([2, 3], vertical_alignment="center")
+    with new_analysis_col:
+        st.button("Start a new analysis", on_click=navigate, args=("Home",))
+    with html_export_col:
+        if html_bytes is not None:
+            st.download_button(
+                "Download Interactive HTML — complete analysis",
+                data=html_bytes,
+                file_name="algorithemes_results.html",
+                mime="text/html",
+                use_container_width=True,
+                key="download_interactive_html_top",
+            )
 
     # The first tab reflects whether broader theme grouping was performed.
     tabs = st.tabs([
@@ -2301,14 +2367,14 @@ def show_results():
         )
 
     with tabs[4]:
-        show_export(embedded=True)
+        show_export(embedded=True, prebuilt_html=html_bytes)
 
 
 # ============================================================
 # EXPORT — EXISTING FUNCTIONALITY
 # ============================================================
 
-def show_export(embedded=False):
+def show_export(embedded=False, prebuilt_html=None):
     if not embedded:
         st.title("Export")
     else:
@@ -2335,17 +2401,19 @@ def show_export(embedded=False):
     st.subheader("Interactive HTML — complete results")
     st.caption("Open the downloaded HTML in your browser to explore charts, topics, coded responses and recommendations without Streamlit or an internet connection.")
     try:
-        html_bytes = build_interactive_html(
-            results=results,
-            analysis_type=analysis_type,
-            coded=coded,
-            dictionary=dictionary,
-            recommendations=st.session_state.recommendations,
-            recommendation_evidence=st.session_state.recommendation_evidence,
-            survey_question=st.session_state.survey_question,
-            response_column=st.session_state.response_column,
-            id_column=st.session_state.id_column,
-        )
+        html_bytes = prebuilt_html
+        if html_bytes is None:
+            html_bytes = build_interactive_html(
+                results=results,
+                analysis_type=analysis_type,
+                coded=coded,
+                dictionary=dictionary,
+                recommendations=st.session_state.recommendations,
+                recommendation_evidence=st.session_state.recommendation_evidence,
+                survey_question=st.session_state.survey_question,
+                response_column=st.session_state.response_column,
+                id_column=st.session_state.id_column,
+            )
         st.download_button(
             "Download Interactive HTML — complete analysis",
             data=html_bytes,
@@ -2413,6 +2481,21 @@ def main():
             )
             st.session_state.page = "Home"
             st.rerun()
+        # Snapshot creation is an explicit local developer action only.
+        # Normal visitors never write result files to the server.
+        from demo_snapshots import build_mode, save_demo_snapshot
+        if build_mode():
+            try:
+                path = save_demo_snapshot(pending_demo, st.session_state)
+                st.success(
+                    f"Saved the {pending_demo} demo snapshot to {path}. "
+                    "Commit this file to GitHub to enable instant demos online."
+                )
+            except Exception as exc:
+                st.warning(
+                    "Analysis succeeded, but the demo snapshot could not be saved: "
+                    f"{type(exc).__name__}: {exc}"
+                )
         # Keep Results selected and show the newly generated findings below.
         st.session_state.page = "Results"
 
