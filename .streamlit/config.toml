@@ -1,7 +1,12 @@
 [theme]
 base = "light"
-primaryColor = "#694B98"
-backgroundColor = "#EDEBF1"
-secondaryBackgroundColor = "#F8F7FA"
+primaryColor = "#604582"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F8F9FC"
 textColor = "#252A3C"
 font = "sans serif"
+
+# Slightly darker, clearly defined table headers across the application.
+dataframeHeaderBackgroundColor = "#E2DCE9"
+dataframeHeaderTextColor = "#30283F"
+dataframeBorderColor = "#D6D0DE"

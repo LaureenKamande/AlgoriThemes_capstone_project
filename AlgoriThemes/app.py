@@ -51,18 +51,18 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* AlgoriThemes — muted professional light theme. Presentation only. */
+    /* AlgoriThemes — white-first interface with deliberate card hierarchy. Presentation only. */
     :root {
         --at-purple: #604582;
         --at-purple-hover: #4E356E;
         --at-teal: #147E7A;
         --at-ink: #252A3C;
         --at-muted: #62687A;
-        --at-line: #C5BFCE;
-        --at-bg: #DCD9E2;
-        --at-sidebar: #CDC8D5;
-        --at-card: #EAE7EE;
-        --at-input: #F1EFF4;
+        --at-line: #E0E2E9;
+        --at-bg: #FFFFFF;
+        --at-sidebar: #F1F2F5;
+        --at-card: #FFFFFF;
+        --at-input: #FFFFFF;
     }
 
     /* Shared page grid: same left/right alignment on every route. */
@@ -70,7 +70,7 @@ st.markdown(
         background: var(--at-bg);
         color: var(--at-ink);
     }
-    [data-testid="stHeader"] { background: rgba(220, 217, 226, .96); }
+    [data-testid="stHeader"] { background: rgba(255, 255, 255, .97); }
     [data-testid="stMainBlockContainer"], .block-container {
         width: 100%;
         max-width: 1160px !important;
@@ -91,7 +91,7 @@ st.markdown(
     /* Sidebar: clear contrast from the workspace and fixed icon/text columns. */
     section[data-testid="stSidebar"] {
         background: var(--at-sidebar);
-        border-right: 1px solid #B8B1C3;
+        border-right: 1px solid #E5E7EF;
     }
     [data-testid="stSidebar"] > div,
     [data-testid="stSidebarContent"] {
@@ -161,8 +161,8 @@ st.markdown(
     }
     [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover,
     [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="secondary"]:hover {
-        background: #C0B9CD;
-        border-color: #C0B9CD;
+        background: #F4F0FA;
+        border-color: #E4D9F0;
         color: #583A83;
     }
     [data-testid="stSidebar"] .stButton > button[kind="primary"],
@@ -176,7 +176,7 @@ st.markdown(
         background: var(--at-purple-hover);
         border-color: var(--at-purple-hover);
     }
-    [data-testid="stSidebar"] hr { border-color: #D0CBD8; margin: 1.1rem 0 .75rem; }
+    [data-testid="stSidebar"] hr { border-color: #E2DCED; margin: 1.1rem 0 .75rem; }
     .at-sidebar-meta { padding: .4rem .1rem .2rem; }
     .at-sidebar-meta-label {
         color: #777487;
@@ -194,7 +194,7 @@ st.markdown(
         margin-bottom: .9rem;
     }
 
-    /* Low-glare surfaces and controls. */
+    /* White surfaces and clean controls. */
     .stButton > button, .stDownloadButton > button {
         border-radius: 9px;
         min-height: 2.65rem;
@@ -218,8 +218,8 @@ st.markdown(
     }
     .stButton > button[kind="secondary"]:hover,
     .stDownloadButton > button[kind="secondary"]:hover {
-        background: #E1DCE8;
-        border-color: #B9A8CE;
+        background: #FCFAFF;
+        border-color: #BCA5D7;
         color: var(--at-purple-hover);
     }
     [data-testid="stMetric"] {
@@ -231,15 +231,6 @@ st.markdown(
     [data-testid="stMetricLabel"] { color: var(--at-muted); }
     [data-baseweb="tab-list"] { border-bottom: 1px solid var(--at-line); }
     [data-baseweb="tab"] { color: #5B5B6C; }
-    [data-testid="stVerticalBlockBorderWrapper"]:has(.at-route-marker) {
-        background: var(--at-card);
-        border: 1px solid #C2BDCB;
-        border-radius: 14px;
-        box-shadow: 0 4px 16px rgba(35, 31, 51, .035);
-    }
-    [data-testid="stVerticalBlockBorderWrapper"]:has(.at-route-marker):hover {
-        border-color: #B8A9CB;
-    }
     [data-testid="stExpander"] { border-color: var(--at-line); }
     [data-baseweb="input"] > div, [data-baseweb="textarea"] > div,
     [data-baseweb="select"] > div {
@@ -289,7 +280,7 @@ st.markdown(
         height: 38px;
         align-items: center;
         justify-content: center;
-        background: #DFD6E9;
+        background: #F4F0FA;
         color: var(--at-purple);
         border-radius: 10px;
         font-size: .84rem;
@@ -297,7 +288,7 @@ st.markdown(
         letter-spacing: .02em;
         margin: .15rem 0 .75rem;
     }
-    .at-route-icon.teal { color: #106F6B; background: #DFEEEB; }
+    .at-route-icon.teal { color: #106F6B; background: #E7F6F3; }
     .at-route-title {
         font-size: 1.12rem;
         font-weight: 750;
@@ -331,8 +322,8 @@ st.markdown(
         align-items: flex-start;
         margin: 1.15rem 0 1.55rem;
         padding: .95rem 1.1rem;
-        background: #E3E0EB;
-        border: 1px solid #BEB5CF;
+        background: #F8F9FC;
+        border: 1px solid #E2DCED;
         border-left: 3px solid var(--at-purple);
         border-radius: 10px;
         color: var(--at-ink);
@@ -365,9 +356,9 @@ st.markdown(
     .at-steps {
         margin: .4rem 0 1.1rem;
         padding: 1rem 1.15rem 1.05rem;
-        border: 1px solid #C5BFCE;
+        border: 1px solid #E5DFEB;
         border-radius: 12px;
-        background: #E6E3EB;
+        background: #FFFFFF;
     }
     .at-steps-heading {
         margin: 0 0 .95rem;
@@ -395,13 +386,13 @@ st.markdown(
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        background: #D8CDE5;
-        border: 1px solid #B5A4CC;
+        background: #F4F0FA;
+        border: 1px solid #DAC9EB;
         color: #563B79;
         font-size: .81rem;
         font-weight: 750;
     }
-    .at-step-rule { height: 1px; flex: 1; background: #BFB7CA; }
+    .at-step-rule { height: 1px; flex: 1; background: #DED5E9; }
     .at-step-title {
         margin: 0 0 .25rem;
         color: #2B2D40;
@@ -469,7 +460,7 @@ st.markdown(
         text-align: left !important;
         white-space: nowrap;
     }
-    /* Lower-glare native Streamlit surfaces (not just custom cards). */
+    /* Native Streamlit surfaces match the bright theme. */
     [data-testid="stAlert"], [data-testid="stNotification"] {
         border-color: var(--at-line);
     }
@@ -547,6 +538,230 @@ st.markdown(
         opacity: 1 !important;
     }
     .at-footnote { color: #53576A !important; }
+
+    /* WHITE-FIRST DESIGN: preserve the white workspace. Contrast belongs to
+       interactive surfaces, not a tinted full-page background. */
+    section[data-testid="stSidebar"] {
+        border-right: 1px solid #E4E5EC;
+    }
+    .at-steps {
+        background: #FFFFFF;
+        border: 1px solid #E1DDE9;
+        box-shadow: 0 1px 3px rgba(34, 29, 52, .025);
+    }
+    .at-step-number {
+        background: #F7F2FC;
+        border-color: #DACBE9;
+    }
+
+    /* Named Streamlit containers: target the actual rendered card surface.
+       The old :has(.at-route-marker) rule did not reliably style the card
+       background, leaving cards visually identical to the canvas. */
+    .st-key-at_topic_card,
+    .st-key-at_sentiment_card {
+        background: #FFFFFF !important;
+        border: 1px solid #D5CEDF !important;
+        border-radius: 14px !important;
+        box-shadow: 0 4px 16px rgba(38, 30, 60, .07) !important;
+        padding: 1.1rem 1.15rem !important;
+        transition: box-shadow .18s ease, border-color .18s ease, transform .18s ease;
+    }
+    .st-key-at_topic_card {
+        border-top: 3px solid #8063A5 !important;
+    }
+    .st-key-at_sentiment_card {
+        border-top: 3px solid #27958F !important;
+    }
+    .st-key-at_topic_card:hover,
+    .st-key-at_topic_card:focus-within {
+        border-color: #AD9BC6 !important;
+        box-shadow: 0 8px 22px rgba(48, 36, 74, .11) !important;
+        transform: translateY(-1px);
+    }
+    .st-key-at_sentiment_card:hover,
+    .st-key-at_sentiment_card:focus-within {
+        border-color: #8CBFBA !important;
+        box-shadow: 0 8px 22px rgba(28, 90, 88, .10) !important;
+        transform: translateY(-1px);
+    }
+    /* Avoid a doubled border when Streamlit supplies its own bordered
+       container wrapper inside the keyed element. */
+    .st-key-at_topic_card [data-testid="stVerticalBlockBorderWrapper"],
+    .st-key-at_sentiment_card [data-testid="stVerticalBlockBorderWrapper"] {
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    /* Crisp, distinct call-to-action hierarchy. */
+    [data-testid="stMain"] .stButton > button[kind="primary"],
+    [data-testid="stMain"] .stDownloadButton > button[kind="primary"] {
+        background: var(--at-purple);
+        border: 1px solid var(--at-purple);
+        color: #FFFFFF;
+        box-shadow: 0 2px 5px rgba(96, 69, 130, .14);
+    }
+    [data-testid="stMain"] .stButton > button[kind="primary"]:hover,
+    [data-testid="stMain"] .stDownloadButton > button[kind="primary"]:hover {
+        background: var(--at-purple-hover);
+        border-color: var(--at-purple-hover);
+        box-shadow: 0 4px 10px rgba(96, 69, 130, .18);
+    }
+    [data-testid="stMain"] .stButton > button[kind="secondary"],
+    [data-testid="stMain"] .stDownloadButton > button[kind="secondary"] {
+        background: #FFFFFF;
+        border: 1px solid #BBA9D0;
+        color: #563A7C;
+    }
+    [data-testid="stMain"] .stButton > button[kind="secondary"]:hover,
+    [data-testid="stMain"] .stDownloadButton > button[kind="secondary"]:hover {
+        background: #F8F4FC;
+        border-color: var(--at-purple);
+        color: var(--at-purple-hover);
+    }
+    [data-testid="stMain"] .stButton > button:focus-visible,
+    [data-testid="stMain"] .stDownloadButton > button:focus-visible {
+        outline: 3px solid #B8A0DB;
+        outline-offset: 2px;
+    }
+    [data-testid="stMetric"] {
+        background: #FFFFFF;
+        border-color: #E0DCE8;
+        box-shadow: 0 2px 8px rgba(37, 42, 60, .035);
+    }
+    /* Results page actions: give each action a clear visual role, while
+       leaving the white workspace, sidebar, and homepage cards unchanged. */
+    .st-key-at_results_new_analysis button {
+        background: #F0EEF4 !important;
+        border: 1px solid #C9C2D4 !important;
+        color: #38324A !important;
+        box-shadow: 0 1px 2px rgba(32, 26, 48, .04);
+        font-weight: 650;
+    }
+    .st-key-at_results_new_analysis button:hover {
+        background: #E8E3EF !important;
+        border-color: #A996BF !important;
+        color: #48315F !important;
+    }
+
+    .st-key-download_interactive_html_top button {
+    background: #F3F0F7 !important;
+    border: 1px solid #C7B8DA !important;
+    color: #604582 !important;
+    box-shadow: none !important;
+    font-weight: 600;
+    }
+
+    .st-key-download_interactive_html_top button:hover {
+    background: #E9E2F1 !important;
+    border-color: #AA95C7 !important;
+    color: #4E356E !important;
+    box-shadow: 0 2px 5px rgba(72, 48, 105, 0.08);
+    }
+
+
+    /* Downloads page only: restrained contrast for all five export actions.
+       Keep the Results header's solid-purple HTML CTA untouched. */
+    :is(.st-key-at_export_coded_csv,
+        .st-key-at_export_dictionary_csv,
+        .st-key-at_export_excel,
+        .st-key-download_interactive_html,
+        .st-key-at_export_report_word) button {
+        background: #F3F0F7 !important;
+        border: 1px solid #C7B8DA !important;
+        color: #604582 !important;
+        font-weight: 600 !important;
+        box-shadow: none !important;
+    }
+    :is(.st-key-at_export_coded_csv,
+        .st-key-at_export_dictionary_csv,
+        .st-key-at_export_excel,
+        .st-key-download_interactive_html,
+        .st-key-at_export_report_word) button:hover {
+        background: #E9E2F1 !important;
+        border-color: #AA95C7 !important;
+        color: #4E356E !important;
+        box-shadow: 0 2px 5px rgba(72, 48, 105, .08) !important;
+    }
+
+    /* Results navigation: editorial, full-width tab row. Keep the active
+       destination unmistakable without a rounded, nested pill container. */
+    [data-testid="stTabs"] :is([role="tablist"], [data-baseweb="tab-list"]),
+    .stTabs :is([role="tablist"], [data-baseweb="tab-list"]) {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: end !important;
+        gap: .35rem !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        padding: 0 !important;
+        margin: .85rem 0 1.35rem !important;
+        background: transparent !important;
+        border: none !important;
+        border-bottom: 1px solid #DDD9E4 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+    [data-testid="stTabs"] :is([role="tab"], [data-baseweb="tab"]),
+    .stTabs :is([role="tab"], [data-baseweb="tab"]) {
+        display: inline-flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        min-height: 2.65rem !important;
+        padding: .66rem 1.15rem !important;
+        border: 1px solid transparent !important;
+        border-bottom: 3px solid transparent !important;
+        border-radius: 6px 6px 0 0 !important;
+        background: transparent !important;
+        color: #444055 !important;
+        font-weight: 550 !important;
+        white-space: nowrap !important;
+        box-shadow: none !important;
+        transition: color .15s ease, background-color .15s ease !important;
+    }
+    [data-testid="stTabs"] :is([role="tab"], [data-baseweb="tab"]):hover:not([aria-selected="true"]),
+    .stTabs :is([role="tab"], [data-baseweb="tab"]):hover:not([aria-selected="true"]) {
+        background: #F7F4FA !important;
+        color: var(--at-purple) !important;
+    }
+    [data-testid="stTabs"] :is([role="tab"], [data-baseweb="tab"])[aria-selected="true"],
+    .stTabs :is([role="tab"], [data-baseweb="tab"])[aria-selected="true"] {
+        background: var(--at-purple) !important;
+        border-color: var(--at-purple) !important;
+        border-bottom-color: var(--at-purple) !important;
+        color: #FFFFFF !important;
+        font-weight: 650 !important;
+        box-shadow: none !important;
+    }
+    [data-testid="stTabs"] :is([role="tab"], [data-baseweb="tab"])[aria-selected="true"] *,
+    .stTabs :is([role="tab"], [data-baseweb="tab"])[aria-selected="true"] * {
+        color: #FFFFFF !important;
+    }
+    [data-testid="stTabs"] :is([role="tab"], [data-baseweb="tab"]):focus-visible,
+    .stTabs :is([role="tab"], [data-baseweb="tab"]):focus-visible {
+        outline: 2px solid #B8A0DB !important;
+        outline-offset: -2px !important;
+    }
+    /* Streamlit's native underline conflicts with the custom selected tab. */
+    [data-testid="stTabs"] :is([data-baseweb="tab-highlight"], [data-testid="stTabHighlight"]),
+    [data-testid="stTabs"] :is([data-baseweb="tab-border"], [data-testid="stTabBorder"]),
+    .stTabs :is([data-baseweb="tab-highlight"], [data-baseweb="tab-border"]) {
+        display: none !important;
+    }
+    @media (max-width: 700px) {
+        [data-testid="stTabs"] :is([role="tab"], [data-baseweb="tab"]),
+        .stTabs :is([role="tab"], [data-baseweb="tab"]) {
+            padding: .6rem .8rem !important;
+            min-height: 2.45rem !important;
+        }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .st-key-at_topic_card, .st-key-at_sentiment_card {
+            transition: none;
+            transform: none !important;
+        }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -1029,7 +1244,7 @@ def show_home():
     left, right = st.columns(2, gap="large")
 
     with left:
-        with st.container(border=True):
+        with st.container(border=False, key="at_topic_card"):
             st.markdown(
                 """<div class="at-route-marker"></div>
                 <div class="at-route-title">Explore topics</div>
@@ -1049,9 +1264,9 @@ def show_home():
             )
 
     with right:
-        with st.container(border=True):
+        with st.container(border=False, key="at_sentiment_card"):
             st.markdown(
-                """<div class="at-route-marker"></div>
+                """<div class="at-route-marker at-route-marker--sentiment"></div>
                 <div class="at-route-title">Explore topics and sentiment</div>
                 <p class="at-route-description">Identify what people discuss and compare
                 positive, neutral and negative responses within each topic.</p>""",
@@ -1408,19 +1623,10 @@ def show_upload_and_configure():
                 index=policies.index(default_policy) if default_policy in policies else 0,
             )
 
-        survey_question = st.text_area(
-            "Original open-ended survey question",
-            value=st.session_state.survey_question,
-            placeholder="Paste the question respondents were answering...",
-            height=100,
-        )
         st.caption("Responses with fewer than three cleaned words are excluded from analysis.")
         submitted = st.form_submit_button("Analyse", type="primary", use_container_width=True)
 
     if not submitted:
-        return
-    if not survey_question.strip():
-        st.error("Enter the original survey question before analysing.")
         return
     if duplicate_policy == "Keep first response per respondent ID" and not id_column:
         st.error("Select a respondent identifier, or choose a different duplicate-handling option.")
@@ -1435,10 +1641,17 @@ def show_upload_and_configure():
         st.error(f"Preparation failed: {exc}")
         return
 
+    if len(model_df) == 0:
+        st.warning(
+            "AlgoriThemes only analyses open-ended survey responses. "
+            "Please select a column containing open-ended responses"
+        )
+        return
     if len(model_df) < 30:
         st.warning(
-            f"Only {len(model_df)} eligible responses remain after preparation. "
-            "Topic discovery requires at least 30. Try another dataset or adjust duplicate handling."
+            f"Only {len(model_df)} eligible open-ended responses remain after preparation. "
+            "Topic discovery requires at least 30. Select another response column "
+            "or review the duplicate-handling settings."
         )
         return
 
@@ -1451,7 +1664,9 @@ def show_upload_and_configure():
         "response_column": response_column,
         "id_column": id_column,
         "duplicate_policy": duplicate_policy,
-        "survey_question": survey_question.strip(),
+        # Preserve the backend's optional survey_question argument without
+        # asking users to supply a question.
+        "survey_question": "",
     })
     # No intermediate Analyse page: run the same pipeline and go to Results.
     if execute_analysis(route):
@@ -1760,6 +1975,62 @@ def wrap_topic_label(value, width=34):
         break_on_hyphens=False,
     )
     return "<br>".join(pieces) if pieces else str(value)
+
+
+def sentiment_by_topic_chart(distribution):
+    """Reuse the same within-topic sentiment figure across results tabs."""
+    if distribution is None or distribution.empty:
+        return None
+    chart_data = distribution.copy()
+    names_per_id = (
+        chart_data[["topic", "topic_name"]].drop_duplicates()
+        if "topic" in chart_data.columns else pd.DataFrame()
+    )
+    if not names_per_id.empty:
+        duplicate_names = names_per_id["topic_name"].duplicated(keep=False)
+        duplicate_ids = set(names_per_id.loc[duplicate_names, "topic"])
+        chart_data["Topic label"] = chart_data.apply(
+            lambda row: (
+                f"{row['topic_name']} (topic {row['topic']})"
+                if row["topic"] in duplicate_ids else str(row["topic_name"])
+            ), axis=1,
+        )
+    else:
+        chart_data["Topic label"] = chart_data["topic_name"].astype(str)
+
+    topic_order = (
+        chart_data.groupby("Topic label")["Topic Total"]
+        .max().sort_values(ascending=True).index.tolist()
+    )
+    fig = px.bar(
+        chart_data,
+        x="Within Topic (%)", y="Topic label", color="sentiment",
+        orientation="h", barmode="stack",
+        color_discrete_map=SENTIMENT_COLORS,
+        category_orders={"sentiment": SENTIMENT_ORDER},
+        custom_data=["Count", "Topic Total"],
+        title="Sentiment composition of identified topics (%)",
+        labels={"Within Topic (%)": "Within topic (%)", "sentiment": "Sentiment"},
+    )
+    fig.update_traces(
+        hovertemplate=(
+            "%{y}<br>%{fullData.name}: %{x:.1f}% of topic"
+            "<br>n=%{customdata[0]} of %{customdata[1]}<extra></extra>"
+        )
+    )
+    fig.update_yaxes(
+        categoryorder="array", categoryarray=topic_order,
+        tickmode="array", tickvals=topic_order,
+        ticktext=[wrap_topic_label(label) for label in topic_order],
+        automargin=True, title=None, tickfont=dict(size=11),
+    )
+    fig.update_layout(
+        height=max(540, 66 * len(topic_order) + 140),
+        xaxis=dict(range=[0, 100], ticksuffix="%", title="Within topic (%)"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        margin=dict(l=310, r=35, t=75, b=50),
+    )
+    return fig
 
 
 def render_theme_sentiment(theme_rows, topic_counts, topic_id_col, section_key, theme_index):
@@ -2363,59 +2634,11 @@ def display_theme_section(results, analysis_type):
                    "Responses unassigned by BERTopic are excluded from topic-level comparisons.")
         dist = results.get("sentiment_by_topic", pd.DataFrame())
         if not dist.empty:
-            # Horizontal 100%-stacked bars keep long topic names readable.
-            chart_data = dist.copy()
-            names_per_id = (
-                chart_data[["topic", "topic_name"]].drop_duplicates()
-                if "topic" in chart_data.columns else pd.DataFrame()
-            )
-            if not names_per_id.empty:
-                duplicate_names = names_per_id["topic_name"].duplicated(keep=False)
-                duplicate_ids = set(names_per_id.loc[duplicate_names, "topic"])
-                chart_data["Topic label"] = chart_data.apply(
-                    lambda row: (
-                        f"{row['topic_name']} (topic {row['topic']})"
-                        if row["topic"] in duplicate_ids else str(row["topic_name"])
-                    ), axis=1,
+            fig = sentiment_by_topic_chart(dist)
+            if fig is not None:
+                st.plotly_chart(
+                    fig, use_container_width=True, key="sentiment_by_topic_chart"
                 )
-            else:
-                chart_data["Topic label"] = chart_data["topic_name"].astype(str)
-
-            topic_order = (
-                chart_data.groupby("Topic label")["Topic Total"]
-                .max().sort_values(ascending=True).index.tolist()
-            )
-            fig = px.bar(
-                chart_data,
-                x="Within Topic (%)", y="Topic label", color="sentiment",
-                orientation="h", barmode="stack",
-                color_discrete_map=SENTIMENT_COLORS,
-                category_orders={"sentiment": SENTIMENT_ORDER},
-                custom_data=["Count", "Topic Total"],
-                title="Sentiment composition of identified topics (%)",
-                labels={"Within Topic (%)": "Within topic (%)", "sentiment": "Sentiment"},
-            )
-            fig.update_traces(
-                hovertemplate=(
-                    "%{y}<br>%{fullData.name}: %{x:.1f}% of topic"
-                    "<br>n=%{customdata[0]} of %{customdata[1]}<extra></extra>"
-                )
-            )
-            fig.update_yaxes(
-                categoryorder="array", categoryarray=topic_order,
-                tickmode="array", tickvals=topic_order,
-                ticktext=[wrap_topic_label(label) for label in topic_order],
-                automargin=True, title=None, tickfont=dict(size=11),
-            )
-            fig.update_layout(
-                height=max(540, 66 * len(topic_order) + 140),
-                xaxis=dict(range=[0, 100], ticksuffix="%", title="Within topic (%)"),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
-                margin=dict(l=310, r=35, t=75, b=50),
-            )
-            st.plotly_chart(
-                fig, use_container_width=True, key="sentiment_by_topic_chart"
-            )
             columns = (["theme_name"] if results.get("themes_generated", True) else []) + [
                 "topic_name", "sentiment", "Count", "Topic Total", "Within Topic (%)"]
             st.dataframe(
@@ -2578,6 +2801,76 @@ def coded_workbook(coded, dictionary):
     return buffer.getvalue()
 
 
+def display_report_distribution_charts(results, analysis_type):
+    """Show full-analysis distribution charts in the Survey Analysis Report.
+
+    Charts describe all analysed responses, rather than a filtered subset.
+    """
+    explorer = results["response_explorer"]
+    st.subheader("Distribution of analysed responses")
+
+    if results.get("themes_generated", True):
+        view = st.radio(
+            "View distribution by", ["Themes", "Topics"],
+            horizontal=True, key="report_distribution_view",
+        )
+        if view == "Themes":
+            if analysis_type == "topic":
+                theme_dist = get_theme_distribution(results)
+            else:
+                # The combined route stores response-level themes; derive the
+                # same counts without depending on topic-only summary fields.
+                assigned = explorer.loc[
+                    explorer["theme_name"].notna()
+                    & explorer["theme_name"].astype(str).ne("Unassigned")
+                ]
+                theme_dist = (
+                    assigned.groupby("theme_name").size()
+                    .reset_index(name="Count")
+                )
+                theme_dist["Percentage"] = (
+                    100 * theme_dist["Count"] / max(len(explorer), 1)
+                )
+            fig = percentage_bar_chart(theme_dist, "Theme distribution (%)")
+        else:
+            fig = topic_distribution_chart(
+                explorer, len(explorer), "Topic distribution (%)"
+            )
+    else:
+        fig = topic_distribution_chart(
+            explorer, len(explorer), "Topic distribution (%)"
+        )
+
+    if fig is not None:
+        st.plotly_chart(fig, use_container_width=True, key="report_topic_distribution")
+    else:
+        st.info("No assigned topics are available to chart.")
+    st.caption(
+        "Percentages use all analysed responses as the denominator."
+    )
+
+    if analysis_type == "sentiment":
+        sentiment_dist = get_sentiment_distribution(results)
+        if sentiment_dist is not None and not sentiment_dist.empty:
+            st.plotly_chart(
+                percentage_sentiment_chart(sentiment_dist),
+                use_container_width=True, key="report_sentiment_distribution",
+            )
+        topic_sentiment = sentiment_by_topic_chart(
+            results.get("sentiment_by_topic", pd.DataFrame())
+        )
+        if topic_sentiment is not None:
+            st.plotly_chart(
+                topic_sentiment, use_container_width=True,
+                key="report_sentiment_by_topic",
+            )
+            st.caption(
+                "Within-topic percentages use the responses assigned to each topic "
+                "as their denominator; unassigned responses are excluded."
+            )
+    st.divider()
+
+
 def display_explorer(results, analysis_type):
     st.subheader("Response Explorer")
     st.write("Explore and export your original survey data with assigned topic codes" +
@@ -2684,6 +2977,9 @@ def display_report(results, analysis_type):
     else:
         st.info("No named topics were identified.")
 
+    # Visual summaries belong in the compiled Report, not Response Explorer.
+    display_report_distribution_charts(results, analysis_type)
+
     st.markdown("## 3. Key Findings")
     for index, theme in enumerate(report["themes"], 1):
         name = theme["name"] + (f" ({theme['sentiment']})" if theme["sentiment"] else "")
@@ -2747,6 +3043,89 @@ def display_report(results, analysis_type):
 # RESULTS — RECOMMENDATIONS
 # ============================================================
 
+def recommendation_coverage_chart(results, recommendations, evidence):
+    """Count distinct analysed responses supporting each recommendation.
+
+    Each recommendation can cite multiple topics (and, for combined analyses,
+    optionally sentiment-specific evidence). Count response IDs only once
+    within a recommendation; the same response can inform several actions.
+    """
+    explorer = results.get("response_explorer")
+    if explorer is None or explorer.empty:
+        return None
+    topic_column = "topic" if "topic" in explorer.columns else "sentiment_topic_id"
+    if topic_column not in explorer.columns:
+        return None
+
+    lookup = {str(t["evidence_id"]): t for t in evidence.get("topics", [])}
+    topic_codes = pd.to_numeric(explorer[topic_column], errors="coerce")
+    response_ids = (
+        explorer["_studio_response_id"]
+        if "_studio_response_id" in explorer.columns
+        else pd.Series(range(len(explorer)), index=explorer.index)
+    )
+    rows = []
+    for index, rec in enumerate(recommendations, 1):
+        matched_ids = set()
+        for evidence_id in rec.get("supporting_evidence_ids", []):
+            item = lookup.get(str(evidence_id))
+            if item is None:
+                continue
+            try:
+                topic_id = int(item["topic_code"])
+            except (TypeError, ValueError, KeyError):
+                continue
+            mask = topic_codes.eq(topic_id)
+            sentiment = item.get("sentiment")
+            if sentiment and "sentiment" in explorer.columns:
+                mask = mask & explorer["sentiment"].eq(sentiment)
+            matched_ids.update(response_ids.loc[mask].tolist())
+        count = len(matched_ids)
+        rows.append({
+            "Recommendation": f"{index}. {rec['title']}",
+            "Responses": count,
+            "Share": 100 * count / len(explorer),
+            "Priority": str(rec.get("priority", "Other")),
+        })
+
+    data = pd.DataFrame(rows)
+    if data.empty or data["Responses"].sum() == 0:
+        return None
+    data = data.sort_values("Responses", ascending=True)
+    fig = px.bar(
+        data, x="Responses", y="Recommendation", orientation="h",
+        color="Priority", text="Responses", custom_data=["Share"],
+        title="Survey responses informing each recommendation",
+        color_discrete_map={
+            "High": "#C16B6B", "Medium": "#7655B8",
+            "Low": "#4D9B78", "Other": "#8794A3",
+        },
+        labels={"Responses": "Distinct supporting responses"},
+    )
+    fig.update_traces(
+        textposition="outside",
+        hovertemplate=(
+            "%{y}<br>%{x:,} distinct supporting responses"
+            "<br>%{customdata[0]:.1f}% of all analysed responses<extra></extra>"
+        ),
+        cliponaxis=False,
+    )
+    order = data["Recommendation"].tolist()
+    fig.update_yaxes(
+        categoryorder="array", categoryarray=order,
+        tickmode="array", tickvals=order,
+        ticktext=[wrap_topic_label(name, width=38) for name in order],
+        automargin=True, title=None,
+    )
+    fig.update_layout(
+        height=max(350, 66 * len(data) + 145),
+        margin=dict(l=300, r=65, t=65, b=45),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        xaxis=dict(range=[0, max(1, data["Responses"].max() * 1.17)]),
+    )
+    return fig
+
+
 def display_recommendations(results, analysis_type):
     st.subheader("Recommendations")
     st.caption(
@@ -2777,6 +3156,17 @@ def display_recommendations(results, analysis_type):
     c1.metric("Recommendations", len(recommendations))
     c2.metric("High priority", high)
     c3.metric("Themes addressed" if results.get("themes_generated", True) else "Topics addressed", len(covered))
+    coverage_fig = recommendation_coverage_chart(results, recommendations, evidence)
+    if coverage_fig is not None:
+        st.plotly_chart(
+            coverage_fig, use_container_width=True, key="recommendation_coverage_chart"
+        )
+        st.caption(
+            "Each bar counts distinct responses assigned to topics cited as evidence "
+            "for that recommendation. A response may support more than one recommendation, "
+            "so bars should not be added together. Priority labels are AI-generated "
+            "and should be reviewed against the original responses."
+        )
     lookup = {t["evidence_id"]: t for t in evidence["topics"]}
     for index, rec in enumerate(recommendations, start=1):
         st.divider()
@@ -2854,9 +3244,19 @@ def show_results():
     except Exception as exc:
         st.warning(f"Interactive HTML export unavailable: {exc}")
 
-    new_analysis_col, html_export_col = st.columns([2, 3], vertical_alignment="center")
+    # Two intentionally sized actions: secondary restart and primary export.
+    # The spacer prevents the download CTA from becoming an oversized banner.
+    new_analysis_col, html_export_col, _action_spacer = st.columns(
+        [1.2, 2.2, 1.1], vertical_alignment="center"
+    )
     with new_analysis_col:
-        st.button("Start a new analysis", on_click=navigate, args=("Home",))
+        st.button(
+            "Start a new analysis",
+            on_click=navigate,
+            args=("Home",),
+            use_container_width=True,
+            key="at_results_new_analysis",
+        )
     with html_export_col:
         if html_bytes is not None:
             st.download_button(
@@ -2865,6 +3265,7 @@ def show_results():
                 file_name="algorithemes_results.html",
                 mime="text/html",
                 use_container_width=True,
+                type="primary",
                 key="download_interactive_html_top",
             )
 
@@ -2921,13 +3322,15 @@ def show_export(embedded=False, prebuilt_html=None):
     st.write("Download the coded survey dataset and its coding dictionary.")
 
     st.download_button("Coded responses — CSV", dataframe_to_csv(coded),
-                       "coded_responses.csv", "text/csv", use_container_width=True)
+                       "coded_responses.csv", "text/csv", use_container_width=True,
+                       key="at_export_coded_csv")
     st.download_button("Coding dictionary — CSV", dataframe_to_csv(dictionary),
-                       "coding_dictionary.csv", "text/csv", use_container_width=True)
+                       "coding_dictionary.csv", "text/csv", use_container_width=True,
+                       key="at_export_dictionary_csv")
     st.download_button("Coded responses + coding dictionary — Excel",
                        coded_workbook(coded, dictionary), "coded_survey_data.xlsx",
                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                       use_container_width=True)
+                       use_container_width=True, key="at_export_excel")
 
     st.divider()
     st.subheader("Interactive HTML — complete results")
@@ -2969,6 +3372,7 @@ def show_export(embedded=False, prebuilt_html=None):
             "algorithemes_report.docx",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             use_container_width=True,
+            key="at_export_report_word",
         )
     except Exception as exc:
         st.warning(f"Report export unavailable: {exc}")
