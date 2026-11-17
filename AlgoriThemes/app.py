@@ -2496,7 +2496,7 @@ def display_theme_section(results, analysis_type):
                 ("Topics identified", len(mapping)),
                 ("Themes generated", 0),
             ])
-            st.info("Theme grouping skipped: BERTopic identified 8 or fewer topics.")
+            st.info("Theme grouping skipped: 8 or fewer topics identifies.")
             st.subheader("Topic distribution")
             fig = topic_distribution_chart(explorer, len(explorer))
             if fig is not None:
