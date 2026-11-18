@@ -1133,9 +1133,6 @@ def select_demo_route(route):
         response_column = settings["response_column"]
         # A small, reproducible demonstration sample. Keep the full dataset
         # unchanged on disk for research and larger-scale evaluation.
-        eligible_demo = raw[response_column].notna() & raw[response_column].astype(str).str.strip().ne("")
-        demo_pool = raw.loc[eligible_demo]
-        raw = demo_pool.sample(n=min(100, len(demo_pool)), random_state=42).reset_index(drop=True)
         id_column = settings.get("id_column")
         duplicate_policy = settings.get("duplicate_policy", "Keep all responses")
         working, model_df, short_df, summary = build_prepared_data(
@@ -2503,10 +2500,7 @@ def display_theme_section(results, analysis_type):
                 st.plotly_chart(fig, use_container_width=True, key="topic_only_distribution")
             st.caption("Percentages use all modelled responses as the denominator.")
             render_topic_details(explorer, mapping, len(explorer), "topic")
-            if results.get("model_summary"):
-                with st.expander("BERTopic model information"):
-                    st.json(results["model_summary"])
-            return
+            
 
         theme_count = (
             mapping["theme_name"].nunique()
@@ -2594,13 +2588,6 @@ def display_theme_section(results, analysis_type):
             section_key="topic",
         )
 
-        summary = results.get("model_summary", {})
-
-        if summary:
-            st.divider()
-
-            with st.expander("BERTopic model information"):
-                st.json(summary)
 
     else:
         sentiment_dist = get_sentiment_distribution(results)
@@ -2680,10 +2667,7 @@ def display_theme_section(results, analysis_type):
         else:
             st.info("Theme grouping skipped: BERTopic identified 8 or fewer topics.")
             render_topic_details(explorer, mapping, len(explorer), "topic_sentiment")
-        if results.get("model_summary"):
-            with st.expander("BERTopic model information"):
-                st.json(results["model_summary"])
-
+        
 
 # ============================================================
 # RESULTS — RESPONSE EXPLORER
@@ -3117,14 +3101,26 @@ def recommendation_coverage_chart(results, recommendations, evidence):
         ticktext=[wrap_topic_label(name, width=38) for name in order],
         automargin=True, title=None,
     )
+    # fig.update_layout(
+    #     height=max(350, 66 * len(data) + 145),
+    #     margin=dict(l=300, r=65, t=65, b=45),
+    #     legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+    #     xaxis=dict(range=[0, max(1, data["Responses"].max() * 1.17)]),
+    # )
+    # return fig
     fig.update_layout(
-        height=max(350, 66 * len(data) + 145),
-        margin=dict(l=300, r=65, t=65, b=45),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        height=max(350, 66 * len(data) + 195),
+        margin=dict(l=300, r=65, t=115, b=45),
+        legend=dict(
+            title_text="Priority",
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            x=0,
+        ),
         xaxis=dict(range=[0, max(1, data["Responses"].max() * 1.17)]),
-    )
+        )
     return fig
-
 
 def display_recommendations(results, analysis_type):
     st.subheader("Recommendations")
